@@ -1,9 +1,15 @@
 # Build stage
-FROM maven:3.9.9-eclipse-temurin-25-alpine AS build
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
-COPY pom.xml .
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+# Resolve permissions for mvnw
+RUN chmod +x mvnw
+# Download dependencies
+RUN ./mvnw dependency:go-offline
+# Copy source code and build
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN ./mvnw clean package -DskipTests
 
 # Run stage
 FROM eclipse-temurin:25-jre-alpine
