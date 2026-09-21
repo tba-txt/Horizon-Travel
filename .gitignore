@@ -3,6 +3,13 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+estudo.md
+.env
+.env.*
+!.env.example
+.var/
+var.json
+
 
 ### STS ###
 .apt_generated
