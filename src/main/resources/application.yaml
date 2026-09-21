@@ -3,46 +3,71 @@ spring:
     name: horizon-api
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/horizon_db
-    username: postgres
-    password: postgres
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 0
+      idle-timeout: 120000
+      max-lifetime: 240000
   
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: validate
-    show-sql: false
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
-  
-  data:
-    redis:
-      host: localhost
-      port: 6379
+        format_sql: false
   
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${EMAIL_USERNAME}
-    password: ${EMAIL_PASSWORD}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-  
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    locations: classpath:db/migration
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: false
+
+api:
+  security:
+    token:
+      secret: ${JWT_SECRET}
+
+cloudinary:
+  cloud_name: ${CLOUDINARY_NAME}
+  api_key: ${CLOUDINARY_KEY}
+  api_secret: ${CLOUDINARY_SECRET}
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  show-actuator: false
+  api-docs:
+    path: /v3/api-docs
 
 management:
+  newrelic:
+    metrics:
+      export:
+        enabled: ${NEW_RELIC_ENABLED:false}
+  metrics:
+    export:
+      newrelic:
+        enabled: ${NEW_RELIC_ENABLED:false}
   endpoints:
     web:
       exposure:
@@ -50,3 +75,11 @@ management:
   endpoint:
     health:
       show-details: always
+
+open-meteo:
+  forecast-url: ${OPEN_METEO_FORECAST_URL:https://api.open-meteo.com}
+  archive-url: ${OPEN_METEO_ARCHIVE_URL:https://archive-api.open-meteo.com}
+  connect-timeout-ms: ${OPEN_METEO_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${OPEN_METEO_READ_TIMEOUT_MS:5000}
+
+
