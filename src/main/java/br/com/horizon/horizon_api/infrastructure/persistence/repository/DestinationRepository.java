@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 @Repository
 public interface DestinationRepository extends JpaRepository<DestinationEntity, Long> {
-    List<DestinationEntity> findByActiveTrue();
+    org.springframework.data.domain.Page<DestinationEntity> findByActiveTrue(org.springframework.data.domain.Pageable pageable);
 }

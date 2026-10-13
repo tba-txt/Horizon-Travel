@@ -68,6 +68,7 @@ public class ReservationPersistenceAdapter implements ReservationPersistencePort
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setPaymentDeadline(domain.getPaymentDeadline());
         entity.setCancelledAt(domain.getCancelledAt());
+        entity.setFeedbackEmailSent(domain.getFeedbackEmailSent() != null ? domain.getFeedbackEmailSent() : false);
 
         ReservationEntity saved = reservationRepository.save(entity);
         domain.setId(saved.getId());
@@ -133,6 +134,13 @@ public class ReservationPersistenceAdapter implements ReservationPersistencePort
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Reservation> findCompletedReservationsReadyForFeedback(java.time.LocalDate eligibilityDate) {
+        return reservationRepository.findCompletedReservationsReadyForFeedback(eligibilityDate).stream()
+                .map(e -> toDomain(e, true))
+                .collect(Collectors.toList());
+    }
+
     private Reservation toDomain(ReservationEntity entity, boolean fetchPayment) {
         Reservation r = new Reservation();
         r.setId(entity.getId());
@@ -151,24 +159,22 @@ public class ReservationPersistenceAdapter implements ReservationPersistencePort
         r.setCreatedAt(entity.getCreatedAt());
         r.setPaymentDeadline(entity.getPaymentDeadline());
         r.setCancelledAt(entity.getCancelledAt());
+        r.setFeedbackEmailSent(entity.getFeedbackEmailSent());
 
-        if (fetchPayment) {
-            paymentRepository.findByReservationId(entity.getId()).ifPresent(pay -> {
-                Payment p = new Payment();
-                p.setId(pay.getId());
-                p.setReservationId(entity.getId());
-                p.setStatus(pay.getStatus());
-                p.setPaymentMethod(pay.getPaymentMethod());
-                p.setAmount(pay.getAmount());
-                p.setCreatedAt(pay.getCreatedAt());
-                p.setPaidAt(pay.getPaidAt());
-                r.setPayment(p);
-            });
+        if (fetchPayment && entity.getPayment() != null) {
+            Payment p = new Payment();
+            p.setId(entity.getPayment().getId());
+            p.setReservationId(entity.getId());
+            p.setStatus(entity.getPayment().getStatus());
+            p.setPaymentMethod(entity.getPayment().getPaymentMethod());
+            p.setAmount(entity.getPayment().getAmount());
+            p.setCreatedAt(entity.getPayment().getCreatedAt());
+            p.setPaidAt(entity.getPayment().getPaidAt());
+            r.setPayment(p);
         }
 
-        List<PassengerEntity> passengerEntities = passengerRepository.findByReservationId(entity.getId());
-        if (passengerEntities != null && !passengerEntities.isEmpty()) {
-            List<Passenger> passList = passengerEntities.stream().map(pe -> {
+        if (entity.getPassengers() != null && !entity.getPassengers().isEmpty()) {
+            List<Passenger> passList = entity.getPassengers().stream().map(pe -> {
                 Passenger p = new Passenger();
                 p.setId(pe.getId());
                 p.setReservationId(entity.getId());

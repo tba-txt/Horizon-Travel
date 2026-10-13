@@ -17,44 +17,114 @@ public class FeedbackService implements RegisterFeedbackUseCase {
     private final br.com.horizon.horizon_api.application.mapper.FeedbackMapper mapper;
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void execute(br.com.horizon.horizon_api.application.dto.request.FeedbackRequest request) {
         if (request.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.NPS) {
-            if (request.getScore() < 0 || request.getScore() > 10) throw new br.com.horizon.horizon_api.domain.exception.BusinessException("NPS must be between 0 and 10");
+            if (request.getScore() < 0 || request.getScore() > 10) {
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("A nota de recomendação deve ser entre 0 e 10.");
+            }
         } else if (request.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.CSAT) {
-            if (request.getScore() < 1 || request.getScore() > 5) throw new br.com.horizon.horizon_api.domain.exception.BusinessException("CSAT must be between 1 and 5");
+            if (request.getScore() < 1 || request.getScore() > 5) {
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("A nota de satisfação deve ser entre 1 e 5.");
+            }
         }
 
         if (request.getTargetType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType.TRIP) {
             if (request.getReservationId() == null) {
-                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Reservation ID is required for TRIP feedback");
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("O identificador da reserva é obrigatório para avaliar a viagem.");
             }
             br.com.horizon.horizon_api.domain.model.Reservation res = reservationPort.findByIdAndUserId(request.getReservationId(), request.getUserId())
-                    .orElseThrow(() -> new br.com.horizon.horizon_api.domain.exception.ResourceNotFoundException("Reservation not found or access denied"));
+                    .orElseThrow(() -> new br.com.horizon.horizon_api.domain.exception.ResourceNotFoundException("Reserva não encontrada ou acesso negado."));
 
             if (port.existsByUserIdAndReservationIdAndFeedbackTypeAndTargetType(request.getUserId(), request.getReservationId(), request.getFeedbackType(), request.getTargetType())) {
-                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Feedback already submitted for this reservation");
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Você já avaliou esta viagem.");
             }
 
             br.com.horizon.horizon_api.domain.model.Flight flightToCheck = null;
-            if (res.getTripType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TripType.ONE_WAY) {
+            if (res.getTripType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TripType.ONE_WAY || res.getReturnFlightId() == null) {
                 flightToCheck = flightPort.getFlightById(res.getOutboundFlightId()).orElseThrow();
             } else {
                 flightToCheck = flightPort.getFlightById(res.getReturnFlightId()).orElseThrow();
             }
 
+            java.time.LocalDate today = java.time.LocalDate.now();
             java.time.LocalDate arrivalDate = flightToCheck.getFlightDate();
-            java.time.LocalDate eligibilityDate = arrivalDate.plusDays(3);
-            if (java.time.LocalDate.now().isBefore(eligibilityDate)) {
-                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Feedback is not yet available for this trip");
-            }
-        } else if (request.getTargetType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType.PLATFORM) {
-            if (port.existsByUserIdAndFeedbackTypeAndTargetType(request.getUserId(), request.getFeedbackType(), request.getTargetType())) {
-                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Platform feedback already submitted by this user");
+            boolean notYetCompleted = today.isBefore(arrivalDate) ||
+                    (today.isEqual(arrivalDate) && flightToCheck.getArrivalTime() != null && java.time.LocalTime.now().isBefore(flightToCheck.getArrivalTime()));
+            if (notYetCompleted) {
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("A avaliação só estará disponível após a conclusão da viagem.");
             }
         }
 
         Feedback domain = mapper.toDomain(request);
         domain.setCreatedAt(java.time.OffsetDateTime.now());
         port.save(domain);
+    }
+
+    public br.com.horizon.horizon_api.application.dto.response.FeedbackMetricsResponse getMetrics() {
+        java.util.List<br.com.horizon.horizon_api.domain.model.Feedback> all = port.findAll();
+
+        long platformTotal = 0;
+        long platformNpsCount = 0;
+        long platformPromoters = 0;
+        long platformDetractors = 0;
+        long platformCsatCount = 0;
+        double platformCsatSum = 0;
+
+        long tripTotal = 0;
+        long tripNpsCount = 0;
+        long tripPromoters = 0;
+        long tripDetractors = 0;
+        long tripCsatCount = 0;
+        double tripCsatSum = 0;
+
+        for (br.com.horizon.horizon_api.domain.model.Feedback f : all) {
+            if (f.getScore() == null) continue;
+            int score = f.getScore();
+
+            if (f.getTargetType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType.PLATFORM) {
+                platformTotal++;
+                if (f.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.NPS) {
+                    platformNpsCount++;
+                    if (score >= 9) platformPromoters++;
+                    else if (score <= 6) platformDetractors++;
+                } else if (f.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.CSAT) {
+                    platformCsatCount++;
+                    platformCsatSum += score;
+                }
+            } else if (f.getTargetType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType.TRIP) {
+                tripTotal++;
+                if (f.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.NPS) {
+                    tripNpsCount++;
+                    if (score >= 9) tripPromoters++;
+                    else if (score <= 6) tripDetractors++;
+                } else if (f.getFeedbackType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType.CSAT) {
+                    tripCsatCount++;
+                    tripCsatSum += score;
+                }
+            }
+        }
+
+        double platformNps = platformNpsCount > 0 ? ((double) (platformPromoters - platformDetractors) / platformNpsCount) * 100 : 0.0;
+        double platformCsat = platformCsatCount > 0 ? platformCsatSum / platformCsatCount : 0.0;
+
+        double tripNps = tripNpsCount > 0 ? ((double) (tripPromoters - tripDetractors) / tripNpsCount) * 100 : 0.0;
+        double tripCsat = tripCsatCount > 0 ? tripCsatSum / tripCsatCount : 0.0;
+
+        return br.com.horizon.horizon_api.application.dto.response.FeedbackMetricsResponse.builder()
+                .platformTotalFeedbacks(platformTotal)
+                .platformNps(platformNps)
+                .platformCsat(platformCsat)
+                .tripTotalFeedbacks(tripTotal)
+                .tripNps(tripNps)
+                .tripCsat(tripCsat)
+                .build();
+    }
+
+    public java.util.List<br.com.horizon.horizon_api.application.dto.response.FeedbackResponse> getMyFeedbacks(Long userId) {
+        return port.findAll().stream()
+                .filter(f -> userId.equals(f.getUserId()))
+                .map(mapper::toResponse)
+                .collect(java.util.stream.Collectors.toList());
     }
 }

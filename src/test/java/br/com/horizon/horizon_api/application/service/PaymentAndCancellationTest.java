@@ -32,6 +32,18 @@ class PaymentAndCancellationTest {
     private FlightPersistencePort flightPort;
 
     @Mock
+    private br.com.horizon.horizon_api.domain.port.UserPersistencePort userPort;
+
+    @Mock
+    private br.com.horizon.horizon_api.domain.port.DestinationPersistencePort destinationPort;
+
+    @Mock
+    private br.com.horizon.horizon_api.domain.port.EmailPort emailPort;
+
+    @Mock
+    private br.com.horizon.horizon_api.infrastructure.persistence.repository.UserRepository userRepository;
+
+    @Mock
     private GenerateTicketsUseCase generateTicketsUseCase;
 
     @InjectMocks
@@ -62,6 +74,7 @@ class PaymentAndCancellationTest {
     @Test
     void testPendingToPaid() {
         when(reservationPort.findByIdAndUserId(100L, 1L)).thenReturn(Optional.of(res));
+        when(reservationPort.save(any())).thenReturn(res);
         
         paymentService.execute(100L, 1L, PaymentMethod.PIX);
         

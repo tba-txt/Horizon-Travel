@@ -22,4 +22,14 @@ public class FeedbackController {
         registerFeedbackUseCase.execute(request);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/metrics")
+    public ResponseEntity<br.com.horizon.horizon_api.application.dto.response.FeedbackMetricsResponse> getMetrics() {
+        return ResponseEntity.ok(((br.com.horizon.horizon_api.application.service.FeedbackService) registerFeedbackUseCase).getMetrics());
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<FeedbackResponse>> getMyFeedbacks() {
+        return ResponseEntity.ok(((br.com.horizon.horizon_api.application.service.FeedbackService) registerFeedbackUseCase).getMyFeedbacks(SecurityUtils.getAuthenticatedUserId()));
+    }
 }

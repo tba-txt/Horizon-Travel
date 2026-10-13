@@ -2,6 +2,12 @@ spring:
   application:
     name: horizon-api
   
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
   datasource:
     url: ${DB_URL}
     username: ${DB_USER}
@@ -11,12 +17,13 @@ spring:
       minimum-idle: 0
       idle-timeout: 120000
       max-lifetime: 240000
+      connection-init-sql: "SET CLIENT_ENCODING TO 'UTF8';"
   
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: true
+    show-sql: ${SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: false
@@ -50,6 +57,11 @@ cloudinary:
   api_secret: ${CLOUDINARY_SECRET}
 
 server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
   port: ${PORT:8080}
 
 springdoc:
@@ -71,15 +83,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: always
+      show-details: ${HEALTH_SHOW_DETAILS:never}
 
 open-meteo:
   forecast-url: ${OPEN_METEO_FORECAST_URL:https://api.open-meteo.com}
   archive-url: ${OPEN_METEO_ARCHIVE_URL:https://archive-api.open-meteo.com}
   connect-timeout-ms: ${OPEN_METEO_CONNECT_TIMEOUT_MS:3000}
   read-timeout-ms: ${OPEN_METEO_READ_TIMEOUT_MS:5000}
-
-

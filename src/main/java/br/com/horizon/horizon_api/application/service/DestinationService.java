@@ -20,8 +20,8 @@ public class DestinationService implements CreateDestinationUseCase, GetDestinat
     private final DestinationPersistencePort port;
 
     @Override
-    public List<DestinationResponse> execute() {
-        return port.findActive().stream().map(this::mapToResponse).collect(Collectors.toList());
+    public List<DestinationResponse> execute(Integer page, Integer size) {
+        return port.findActive(page, size).stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Override

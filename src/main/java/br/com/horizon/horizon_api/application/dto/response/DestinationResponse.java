@@ -11,6 +11,7 @@ public class DestinationResponse {
     private String country;
     private String city;
     private String tourismType;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Preço-base estimado para ida e volta na tarifa básica (econômica). Não representa o preço de um único trecho.")
     private java.math.BigDecimal basePrice;
     private String imageUrl;
 }

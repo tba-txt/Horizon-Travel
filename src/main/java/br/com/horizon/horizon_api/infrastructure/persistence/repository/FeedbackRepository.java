@@ -18,6 +18,11 @@ public interface FeedbackRepository extends JpaRepository<FeedbackEntity, Long> 
             br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType feedbackType, 
             br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType targetType);
 
+    java.util.Optional<FeedbackEntity> findFirstByUserIdAndFeedbackTypeAndTargetType(
+            Long userId,
+            br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.FeedbackType feedbackType,
+            br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType targetType);
+
     List<FeedbackEntity> findByAnsweredAtAfter(OffsetDateTime date);
 }
 

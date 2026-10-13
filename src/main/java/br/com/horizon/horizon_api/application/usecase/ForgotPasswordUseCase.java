@@ -23,7 +23,7 @@ public class ForgotPasswordUseCase {
     private final PasswordResetTokenRepository tokenRepository;
     private final EmailPort emailPort;
 
-    @Value("${FRONTEND_BASE_URL:http://localhost:3000}")
+    @Value("${FRONTEND_BASE_URL:http://localhost:4200}")
     private String frontendBaseUrl;
 
     @Transactional
@@ -51,14 +51,21 @@ public class ForgotPasswordUseCase {
         tokenRepository.save(tokenEntity);
 
         String resetLink = frontendBaseUrl + "/reset-password?token=" + rawToken;
-        String subject = "Horizon - Redefinicao de Senha";
-        String body = "Ola " + user.getName() + ",\n\n" +
-                "Voce solicitou a redefinicao da sua senha.\n" +
-                "Acesse o link abaixo para criar uma nova senha:\n" +
-                resetLink + "\n\n" +
-                "Este link expira em 1 hora.\n\n" +
-                "Caso nao tenha solicitado, apenas ignore este email.";
+        String subject = "Horizon - Recuperação de Senha";
+        String htmlBody = "<div style=\"font-family: Arial, sans-serif; text-align: center; padding: 32px; color: #1e293b; background-color: #f8fafc; border-radius: 12px; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0;\">" +
+                "<div style=\"margin-bottom: 20px;\">" +
+                "  <h1 style=\"color: #4A90E2; margin: 0; font-size: 26px; font-weight: bold;\">Horizon</h1>" +
+                "</div>" +
+                "<h2 style=\"color: #0f172a; margin-bottom: 12px; font-size: 20px;\">Recuperação de Senha</h2>" +
+                "<p style=\"font-size: 15px; margin-bottom: 20px; color: #475569; line-height: 1.5;\">Olá <strong>" + user.getName() + "</strong>,<br>Recebemos uma solicitação para redefinir a senha da sua conta no Horizon.</p>" +
+                "<p style=\"font-size: 14px; color: #64748b; margin-bottom: 24px;\">Clique no botão abaixo para criar sua nova credencial de acesso:</p>" +
+                "<a href=\"" + resetLink + "\" style=\"background-color: #4A90E2; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; font-size: 15px; box-shadow: 0 4px 12px rgba(74,144,226,0.3);\">Redefinir Minha Senha</a>" +
+                "<p style=\"font-size: 13px; color: #94a3b8; margin-top: 24px;\">Este link é válido por <strong>1 hora</strong>.</p>" +
+                "<div style=\"border-top: 1px solid #e2e8f0; margin-top: 24px; padding-top: 16px;\">" +
+                "  <p style=\"font-size: 12px; color: #94a3b8; margin: 0;\">Se você não realizou esta solicitação, ignore este e-mail. Sua conta continuará em segurança.</p>" +
+                "</div>" +
+                "</div>";
 
-        emailPort.sendEmail(user.getEmail(), subject, body);
+        emailPort.sendEmail(user.getEmail(), subject, htmlBody);
     }
 }

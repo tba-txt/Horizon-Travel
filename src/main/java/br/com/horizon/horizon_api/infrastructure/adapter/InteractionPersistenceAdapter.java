@@ -21,6 +21,7 @@ public class InteractionPersistenceAdapter implements InteractionPersistencePort
         i.setId(e.getId());
         i.setUserId(e.getUser().getId());
         i.setPostId(e.getPost().getId());
+        i.setOptionId(e.getOptionId());
         i.setInteractionType(e.getInteractionType());
         i.setCreatedAt(e.getCreatedAt());
         return i;
@@ -37,6 +38,7 @@ public class InteractionPersistenceAdapter implements InteractionPersistencePort
         e.setId(i.getId());
         UserEntity u = new UserEntity(); u.setId(i.getUserId()); e.setUser(u);
         PostEntity p = new PostEntity(); p.setId(i.getPostId()); e.setPost(p);
+        e.setOptionId(i.getOptionId());
         e.setInteractionType(i.getInteractionType());
         e.setCreatedAt(i.getCreatedAt());
         return map(repo.save(e));

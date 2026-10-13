@@ -20,7 +20,7 @@ public class TicketEntity {
     @JoinColumn(name = "reservation_id", nullable = false)
     private ReservationEntity reservation;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "passenger_id", unique = true, nullable = false)
     private PassengerEntity passenger;
 

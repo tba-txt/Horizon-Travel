@@ -7,7 +7,9 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+    @Index(name = "idx_post_published", columnList = "published")
+})
 @Getter
 @Setter
 public class PostEntity {
@@ -25,9 +27,6 @@ public class PostEntity {
     @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "destination_id")
-    private DestinationEntity destination;
 
     @Column(name = "published")
     private Boolean published;
@@ -37,4 +36,16 @@ public class PostEntity {
 
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
+    private java.util.List<PostAttributeEntity> attributes = new java.util.ArrayList<>();
+
+    @jakarta.persistence.Column(name="likes_count", nullable=false, columnDefinition="BIGINT DEFAULT 0")
+    private Long likesCount = 0L;
+
+    @jakarta.persistence.Column(name="dislikes_count", nullable=false, columnDefinition="BIGINT DEFAULT 0")
+    private Long dislikesCount = 0L;
+
+    @Column(name = "post_type", length = 50)
+    private String postType = "DEFAULT";
 }

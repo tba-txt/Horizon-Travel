@@ -19,8 +19,11 @@ public class FlightResponse {
     private LocalTime departureTime;
     private LocalTime arrivalTime;
     private String flightNumber;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Tarifa básica por passageiro para este único trecho (ida ou volta).")
     private BigDecimal pricePerPerson;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Tarifa executiva por passageiro para este único trecho (ida ou volta).")
     private BigDecimal priceExecutive;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Tarifa premium por passageiro para este único trecho (ida ou volta).")
     private BigDecimal pricePremium;
     private Integer totalSeats;
     private Integer availableSeats;

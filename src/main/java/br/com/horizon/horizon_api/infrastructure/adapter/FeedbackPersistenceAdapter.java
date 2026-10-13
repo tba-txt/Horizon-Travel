@@ -23,12 +23,26 @@ public class FeedbackPersistenceAdapter implements FeedbackPersistencePort {
 
     @Override
     public Feedback save(Feedback domain) {
-        FeedbackEntity entity = mapper.toEntity(domain);
-        if (domain.getUserId() != null) {
-            entity.setUser(userRepository.findById(domain.getUserId()).orElse(null));
+        FeedbackEntity entity = null;
+        if (domain.getId() == null && domain.getUserId() != null
+                && domain.getTargetType() == br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType.PLATFORM
+                && domain.getFeedbackType() != null) {
+            entity = repository.findFirstByUserIdAndFeedbackTypeAndTargetType(
+                    domain.getUserId(), domain.getFeedbackType(), domain.getTargetType()).orElse(null);
         }
-        if (domain.getReservationId() != null) {
-            entity.setReservation(reservationRepository.findById(domain.getReservationId()).orElse(null));
+
+        if (entity != null) {
+            entity.setScore(domain.getScore());
+            entity.setComment(domain.getComment());
+            entity.setAnsweredAt(domain.getCreatedAt());
+        } else {
+            entity = mapper.toEntity(domain);
+            if (domain.getUserId() != null) {
+                entity.setUser(userRepository.findById(domain.getUserId()).orElse(null));
+            }
+            if (domain.getReservationId() != null) {
+                entity.setReservation(reservationRepository.findById(domain.getReservationId()).orElse(null));
+            }
         }
         FeedbackEntity saved = repository.save(entity);
         return mapper.toDomain(saved);

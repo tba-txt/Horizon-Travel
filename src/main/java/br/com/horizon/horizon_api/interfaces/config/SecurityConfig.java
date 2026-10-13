@@ -25,9 +25,14 @@ public class SecurityConfig {
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(session -> session.sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers("/actuator/**").permitAll()
+				.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+				.requestMatchers("/dev/**").permitAll()
 				.requestMatchers(org.springframework.http.HttpMethod.POST, "/users").permitAll()
 				.requestMatchers("/auth/**").permitAll()
+				.requestMatchers(org.springframework.http.HttpMethod.GET, "/destinations", "/destinations/**").permitAll()
+				.requestMatchers(org.springframework.http.HttpMethod.GET, "/flights", "/flights/**").permitAll()
+				.requestMatchers(org.springframework.http.HttpMethod.GET, "/posts", "/posts/**").permitAll()
+				.requestMatchers(org.springframework.http.HttpMethod.GET, "/quizzes", "/quizzes/**").permitAll()
 				// Swagger / OpenAPI
 				.requestMatchers(
 					"/swagger-ui/**",
@@ -47,7 +52,11 @@ public class SecurityConfig {
 	@Bean
 	public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
 		org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
-		configuration.setAllowedOriginPatterns(java.util.List.of("http://localhost:*", "https://*.onrender.com", "https://*.vercel.app"));
+		configuration.setAllowedOrigins(java.util.List.of(
+				"http://localhost:4200",
+				"http://localhost:3000",
+				"https://horizon-web-5zhz.onrender.com"
+		));
 		configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 		configuration.setAllowedHeaders(java.util.List.of("*"));
 		configuration.setAllowCredentials(true);

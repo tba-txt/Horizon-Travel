@@ -33,6 +33,9 @@ class UserServiceTest {
     @Mock
     private PasswordEncodePort passwordEncoder;
 
+    @Mock
+    private br.com.horizon.horizon_api.infrastructure.messaging.CloudinaryServiceAdapter cloudinaryServiceAdapter;
+
     @InjectMocks
     private UserService userService;
 
@@ -43,7 +46,7 @@ class UserServiceTest {
         MockitoAnnotations.openMocks(this);
         userMapper = new UserMapper();
         // Since UserService uses userMapper directly but we mocked it above, we should set it manually or use Spy
-        userService = new UserService(userPort, passwordEncoder, userMapper, userProfilePort);
+        userService = new UserService(userPort, passwordEncoder, userMapper, userProfilePort, cloudinaryServiceAdapter);
         when(userProfilePort.findByUserId(any())).thenReturn(Optional.empty());
     }
 

@@ -14,4 +14,5 @@ public interface ReservationPersistencePort {
     List<Reservation> findByUserId(Long userId);
     List<Reservation> findExpiredPendingReservations(OffsetDateTime now);
     List<Reservation> findConfirmedReservationsPastEndDate(java.time.LocalDate currentDate, java.time.LocalTime currentTime);
+    List<Reservation> findCompletedReservationsReadyForFeedback(java.time.LocalDate eligibilityDate);
 }

@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class PostPersistenceAdapter implements PostPersistencePort, PostAttributePersistencePort {
     private final PostRepository postRepo;
     private final PostAttributeRepository attrRepo;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
     
     private Post map(PostEntity e) {
         Post p = new Post();
@@ -26,26 +27,59 @@ public class PostPersistenceAdapter implements PostPersistencePort, PostAttribut
         p.setTitle(e.getTitle());
         p.setCaption(e.getCaption());
         p.setImageUrl(e.getImageUrl());
-        if (e.getDestination() != null) p.setDestinationId(e.getDestination().getId());
         p.setPublished(e.getPublished());
         p.setCreatedAt(e.getCreatedAt());
         p.setUpdatedAt(e.getUpdatedAt());
+        p.setLikesCount(e.getLikesCount() != null ? e.getLikesCount() : 0L);
+        p.setDislikesCount(e.getDislikesCount() != null ? e.getDislikesCount() : 0L);
+        p.setPostType(e.getPostType());
+        
+        if (e.getAttributes() != null) {
+            List<PostAttribute> attrs = e.getAttributes().stream().map(a -> {
+                PostAttribute pa = new PostAttribute();
+                pa.setPostId(a.getPost().getId());
+                pa.setAttributeId(a.getAttribute().getId());
+                pa.setAttributeName(a.getAttribute().getName());
+                pa.setWeight(a.getWeight());
+                return pa;
+            }).collect(Collectors.toList());
+            p.setAttributes(attrs);
+        }
+
+        if ("THIS_OR_THAT".equalsIgnoreCase(e.getPostType()) && e.getId() != null) {
+            List<Post.PostOption> options = jdbcTemplate.query(
+                "SELECT id, label, image_url, votes_count FROM post_options WHERE post_id = ? ORDER BY id",
+                (rs, rowNum) -> {
+                    Post.PostOption opt = new Post.PostOption();
+                    opt.setId(rs.getLong("id"));
+                    opt.setLabel(rs.getString("label"));
+                    opt.setImage(rs.getString("image_url"));
+                    opt.setVotes(rs.getInt("votes_count"));
+                    return opt;
+                },
+                e.getId()
+            );
+            p.setOptions(options);
+        }
+        
         return p;
     }
     
     @Override
     public Post save(Post p) {
         PostEntity e = new PostEntity();
-        e.setId(p.getId());
+        if (p.getId() != null) {
+            e = postRepo.findById(p.getId()).orElse(new PostEntity());
+        }
         e.setTitle(p.getTitle());
         e.setCaption(p.getCaption());
         e.setImageUrl(p.getImageUrl());
-        if (p.getDestinationId() != null) {
-            DestinationEntity d = new DestinationEntity(); d.setId(p.getDestinationId()); e.setDestination(d);
-        }
         e.setPublished(p.getPublished());
         e.setCreatedAt(p.getCreatedAt());
         e.setUpdatedAt(p.getUpdatedAt());
+        e.setPostType(p.getPostType());
+        if (p.getLikesCount() != null) e.setLikesCount(p.getLikesCount());
+        if (p.getDislikesCount() != null) e.setDislikesCount(p.getDislikesCount());
         return map(postRepo.save(e));
     }
     
@@ -55,8 +89,8 @@ public class PostPersistenceAdapter implements PostPersistencePort, PostAttribut
     }
     
     @Override
-    public List<Post> findPublished() {
-        return postRepo.findByPublishedTrue().stream().map(this::map).collect(Collectors.toList());
+    public List<Post> findPublished(Integer page, Integer size) {
+        return postRepo.findByPublishedTrue(org.springframework.data.domain.PageRequest.of(page != null ? page : 0, size != null ? size : 100)).stream().map(this::map).collect(Collectors.toList());
     }
     
     @Override

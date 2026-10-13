@@ -1,7 +1,17 @@
 package br.com.horizon.horizon_api.domain.model;
+
+import br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.InteractionType;
 import lombok.Getter;
 import lombok.Setter;
-@Getter @Setter
+import java.time.OffsetDateTime;
+
+@Getter
+@Setter
 public class Interaction {
-    private Long id; private Long userId; private Long postId; private br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.InteractionType interactionType; private java.time.OffsetDateTime createdAt;
+    private Long id;
+    private Long userId;
+    private Long postId;
+    private Long optionId;
+    private InteractionType interactionType;
+    private OffsetDateTime createdAt;
 }

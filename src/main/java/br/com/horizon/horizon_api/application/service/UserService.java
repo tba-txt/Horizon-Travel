@@ -20,12 +20,13 @@ import java.time.OffsetDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUserByEmailUseCase, UpdateUserUseCase, DeactivateUserUseCase {
+public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUserByEmailUseCase, UpdateUserUseCase, DeactivateUserUseCase, UploadProfilePictureUseCase {
     
     private final UserPersistencePort userPort;
     private final PasswordEncodePort passwordEncoder;
     private final UserMapper userMapper;
     private final UserProfilePersistencePort userProfilePort;
+    private final br.com.horizon.horizon_api.infrastructure.messaging.CloudinaryServiceAdapter cloudinaryServiceAdapter;
 
     private UserResponse enrichWithProfile(UserResponse response) {
         userProfilePort.findByUserId(response.getId()).ifPresent(p -> {
@@ -36,8 +37,8 @@ public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUs
 
     @Override
     public UserResponse execute(UserRequest request) {
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty() || request.getPassword().length() < 6) {
-            throw new BusinessException("A senha deve ter pelo menos 6 caracteres.");
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty() || request.getPassword().length() < 6 || request.getPassword().length() > 100) {
+            throw new BusinessException("A senha deve ter entre 6 e 100 caracteres.");
         }
         if (userPort.existsByEmail(request.getEmail())) {
             throw new br.com.horizon.horizon_api.domain.exception.ConflictException("E-mail já cadastrado.");
@@ -45,11 +46,11 @@ public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUs
         if (userPort.existsByCpf(request.getCpf())) {
             throw new br.com.horizon.horizon_api.domain.exception.ConflictException("CPF já cadastrado.");
         }
-        if (request.getBirthDate() != null && java.time.temporal.ChronoUnit.YEARS.between(request.getBirthDate(), java.time.LocalDate.now()) < 1) {
-            throw new BusinessException("O usuário deve ter pelo menos 1 ano de idade.");
-        }
-
         User user = userMapper.toDomain(request);
+        user.validateAge();
+        if (user.getProfileImageUrl() == null || user.getProfileImageUrl().trim().isEmpty()) {
+            user.setProfileImageUrl("assets/default-avatar.webp");
+        }
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setActive(true);
         user.setCreatedAt(OffsetDateTime.now());
@@ -84,15 +85,12 @@ public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUs
         if (!existingUser.getCpf().equals(request.getCpf()) && userPort.existsByCpf(request.getCpf())) {
             throw new br.com.horizon.horizon_api.domain.exception.ConflictException("CPF já cadastrado.");
         }
-        if (request.getBirthDate() != null && java.time.temporal.ChronoUnit.YEARS.between(request.getBirthDate(), java.time.LocalDate.now()) < 1) {
-            throw new BusinessException("O usuário deve ter pelo menos 1 ano de idade.");
-        }
-
         existingUser.setName(request.getName());
         existingUser.setSocialName(request.getSocialName());
         existingUser.setEmail(request.getEmail());
         existingUser.setCpf(request.getCpf());
         existingUser.setBirthDate(request.getBirthDate());
+        existingUser.validateAge();
         existingUser.setProfileImageUrl(request.getProfileImageUrl());
         existingUser.setUpdatedAt(OffsetDateTime.now());
         // password hash is NOT updated here as per constraints
@@ -114,5 +112,37 @@ public class UserService implements CreateUserUseCase, GetUserByIdUseCase, GetUs
         existingUser.setActive(false);
         existingUser.setUpdatedAt(OffsetDateTime.now());
         userPort.save(existingUser);
+    }
+
+    @Override
+    public UserResponse execute(Long userId, org.springframework.web.multipart.MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("Nenhum arquivo de imagem foi enviado.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equalsIgnoreCase("image/jpeg") &&
+                                    !contentType.equalsIgnoreCase("image/png") &&
+                                    !contentType.equalsIgnoreCase("image/webp") &&
+                                    !contentType.equalsIgnoreCase("image/jpg"))) {
+            throw new BusinessException("Formato inválido. Apenas imagens (JPG, PNG, WEBP) são permitidas.");
+        }
+
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new BusinessException("A foto de perfil não pode ultrapassar 10MB.");
+        }
+
+        User existingUser = userPort.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
+        
+        try {
+            String imageUrl = cloudinaryServiceAdapter.uploadImage(file);
+            existingUser.setProfileImageUrl(imageUrl);
+            existingUser.setUpdatedAt(OffsetDateTime.now());
+            User savedUser = userPort.save(existingUser);
+            return enrichWithProfile(userMapper.toResponse(savedUser));
+        } catch (Exception e) {
+            throw new BusinessException("Erro ao fazer upload da imagem: " + e.getMessage());
+        }
     }
 }

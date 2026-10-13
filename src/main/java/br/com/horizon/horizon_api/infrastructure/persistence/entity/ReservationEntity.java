@@ -11,7 +11,11 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "reservations")
+@Table(name = "reservations", indexes = {
+    @Index(name = "idx_reservation_user", columnList = "user_id"),
+    @Index(name = "idx_reservation_status", columnList = "status"),
+    @Index(name = "idx_reservation_payment_deadline", columnList = "payment_deadline")
+})
 @Getter
 @Setter
 public class ReservationEntity {
@@ -19,6 +23,10 @@ public class ReservationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    @Column(name = "version")
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -64,4 +72,13 @@ public class ReservationEntity {
 
     @Column(name = "cancelled_at")
     private OffsetDateTime cancelledAt;
+
+    @Column(name = "feedback_email_sent")
+    private Boolean feedbackEmailSent = false;
+
+    @OneToMany(mappedBy = "reservation", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<PassengerEntity> passengers = new java.util.ArrayList<>();
+
+    @OneToOne(mappedBy = "reservation", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private PaymentEntity payment;
 }

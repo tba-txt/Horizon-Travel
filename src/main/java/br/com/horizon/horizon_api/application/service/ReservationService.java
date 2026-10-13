@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class ReservationService implements CreateReservationUseCase, GetReservationByIdUseCase, ListUserReservationsUseCase {
 
     private final ReservationPersistencePort reservationPort;
@@ -53,7 +54,7 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
     public ReservationResponse execute(Long userId, ReservationRequest request) {
         User buyer = userPort.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
-        if (buyer.getBirthDate() == null || ChronoUnit.YEARS.between(buyer.getBirthDate(), LocalDate.now()) < 18) {
+        if (!buyer.isAdult()) {
             throw new IllegalArgumentException("O comprador deve ter pelo menos 18 anos.");
         }
 
@@ -113,9 +114,8 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
                 throw new IllegalArgumentException("O voo de volta selecionado não está ativo.");
             }
 
-            LocalDate minReturn = outbound.getFlightDate().plusDays(3);
-            if (returnFlight.getFlightDate().isBefore(minReturn)) {
-                throw new IllegalArgumentException("A data de volta deve ser pelo menos 3 dias após a partida.");
+            if (returnFlight.getFlightDate().isBefore(outbound.getFlightDate())) {
+                throw new IllegalArgumentException("A data de volta não pode ser anterior à data de partida.");
             }
             totalPerPerson = totalPerPerson.add(returnFlight.getPricePerPerson());
         }
@@ -161,6 +161,7 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         reservation.setPayment(payment);
 
         Reservation saved = reservationPort.save(reservation);
+        log.info("Created new reservation ID: {} for User ID: {}", saved.getId(), userId);
 
         return toDetailedResponse(saved);
     }

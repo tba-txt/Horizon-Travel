@@ -32,9 +32,9 @@ public class DestinationController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DestinationResponse>> list() {
+    public ResponseEntity<List<DestinationResponse>> list(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "100") Integer size) {
         log.info("Recebida requisição GET /destinations");
-        List<DestinationResponse> result = listDestinationsUseCase.execute();
+        List<DestinationResponse> result = listDestinationsUseCase.execute(page, size);
         log.info("Retornando {} destinos", result.size());
         return ResponseEntity.ok(result);
     }

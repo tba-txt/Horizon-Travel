@@ -51,6 +51,7 @@ public class BatchConfig {
     private final ReservationPersistencePort reservationPort;
     private final CancelReservationUseCase cancelReservationUseCase;
     private final FinalizeReservationUseCase finalizeReservationUseCase;
+    private final br.com.horizon.horizon_api.application.usecase.TriggerFeedbackUseCase triggerFeedbackUseCase;
     private final JobLauncher jobLauncher;
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
@@ -175,10 +176,68 @@ public class BatchConfig {
     }
 
     @Bean
-    public Job cancelExpiredReservationsJob(Step cancelExpiredReservationsStep, Step finalizeReservationsStep) {
+    public ItemReader<Reservation> triggerFeedbackReader() {
+        return new ItemReader<Reservation>() {
+            private Iterator<Reservation> iterator;
+
+            @Override
+            public Reservation read() {
+                if (iterator == null) {
+                    List<Reservation> readyForFeedback = reservationPort.findCompletedReservationsReadyForFeedback(LocalDate.now().minusDays(3));
+                    iterator = readyForFeedback.iterator();
+                }
+                if (iterator.hasNext()) {
+                    return iterator.next();
+                }
+                iterator = null;
+                return null;
+            }
+        };
+    }
+
+    @Bean
+    public ItemProcessor<Reservation, Reservation> triggerFeedbackProcessor() {
+        return reservation -> {
+            if (reservation.getFeedbackEmailSent() != null && reservation.getFeedbackEmailSent()) {
+                return null;
+            }
+            log.info("[Spring Batch] Processing feedback trigger for Reservation ID: {}", reservation.getId());
+            return reservation;
+        };
+    }
+
+    @Bean
+    public ItemWriter<Reservation> triggerFeedbackWriter() {
+        return chunk -> {
+            for (Reservation reservation : chunk) {
+                try {
+                    triggerFeedbackUseCase.execute(reservation);
+                } catch (Exception e) {
+                    log.error("[Spring Batch] Failed to trigger feedback for Reservation ID: {}", reservation.getId(), e);
+                }
+            }
+        };
+    }
+
+    @Bean
+    public Step triggerFeedbackStep(ItemReader<Reservation> triggerFeedbackReader,
+                                    ItemProcessor<Reservation, Reservation> triggerFeedbackProcessor,
+                                    ItemWriter<Reservation> triggerFeedbackWriter) {
+        return new StepBuilder("triggerFeedbackStep", jobRepository)
+                .<Reservation, Reservation>chunk(10)
+                .transactionManager(transactionManager)
+                .reader(triggerFeedbackReader)
+                .processor(triggerFeedbackProcessor)
+                .writer(triggerFeedbackWriter)
+                .build();
+    }
+
+    @Bean
+    public Job cancelExpiredReservationsJob(Step cancelExpiredReservationsStep, Step finalizeReservationsStep, Step triggerFeedbackStep) {
         return new JobBuilder("cancelExpiredReservationsJob", jobRepository)
                 .start(cancelExpiredReservationsStep)
                 .next(finalizeReservationsStep)
+                .next(triggerFeedbackStep)
                 .build();
     }
 

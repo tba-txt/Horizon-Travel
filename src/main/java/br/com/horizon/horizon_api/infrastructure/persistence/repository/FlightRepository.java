@@ -15,14 +15,14 @@ public interface FlightRepository extends JpaRepository<FlightEntity, Long> {
     
     // We join FlightAvailability to prevent N+1 and we filter availableSeats > 0
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"destination"})
-    @Query("SELECT f FROM FlightEntity f JOIN FlightAvailabilityEntity fa ON f.id = fa.flight.id " +
+    @Query("SELECT f FROM FlightEntity f JOIN FETCH f.availability fa " +
            "WHERE f.destination.id = :destinationId AND f.active = true " +
            "AND f.flightDate BETWEEN :start AND :end " +
            "AND fa.availableSeats > 0")
     List<FlightEntity> findAvailableFlights(
             @Param("destinationId") Long destinationId, 
             @Param("start") LocalDate start, 
-            @Param("end") LocalDate end);
+            @Param("end") LocalDate end, org.springframework.data.domain.Pageable pageable);
 
     Optional<FlightEntity> findByIdAndActiveTrue(Long id);
 

@@ -22,9 +22,9 @@ public class PostController {
     }
     
     @GetMapping
-    public ResponseEntity<List<PostResponseDTO>> listPublished() {
+    public ResponseEntity<List<PostResponseDTO>> listPublished(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "100") Integer size) {
         log.info("Recebida requisição GET /posts");
-        List<PostResponseDTO> result = service.execute();
+        List<PostResponseDTO> result = service.execute(page, size);
         log.info("Retornando {} posts", result.size());
         return ResponseEntity.ok(result);
     }

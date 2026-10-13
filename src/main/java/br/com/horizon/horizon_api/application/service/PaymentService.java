@@ -21,20 +21,14 @@ public class PaymentService implements ConfirmPaymentUseCase {
 
     private final ReservationPersistencePort reservationPort;
     private final GenerateTicketsUseCase generateTicketsUseCase;
+    private final br.com.horizon.horizon_api.domain.port.EmailPort emailPort;
+    private final br.com.horizon.horizon_api.infrastructure.persistence.repository.UserRepository userRepository;
 
     @Override
     @Transactional
     public void execute(Long reservationId, Long userId, PaymentMethod method) {
         Reservation reservation = reservationPort.findByIdAndUserId(reservationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Reservation not found."));
-
-        // Idempotency: if already confirmed and paid, ensure tickets exist and return safely
-        if (reservation.getStatus() == ReservationStatus.CONFIRMADA &&
-            reservation.getPayment() != null && reservation.getPayment().getStatus() == PaymentStatus.PAGO) {
-            log.info("Reservation {} already CONFIRMADA and PAGO. Ensuring tickets exist...", reservationId);
-            generateTicketsUseCase.execute(reservation);
-            return;
-        }
 
         if (reservation.getStatus() != ReservationStatus.PENDENTE) {
             throw new IllegalStateException("Reservation is not in PENDENTE status.");
@@ -58,5 +52,18 @@ public class PaymentService implements ConfirmPaymentUseCase {
         // Generate tickets for all passengers upon confirmation
         generateTicketsUseCase.execute(saved);
         log.info("Payment confirmed and tickets generated for Reservation ID: {}", saved.getId());
+
+        try {
+            br.com.horizon.horizon_api.infrastructure.persistence.entity.UserEntity user = userRepository.findById(userId).orElseThrow();
+            String subject = "Horizon - Pagamento Confirmado";
+            String body = "Ola " + user.getName() + ",\n\n" +
+                    "Seu pagamento para a reserva #" + saved.getId() + " foi confirmado com sucesso!\n" +
+                    "Seus bilhetes ja estao disponiveis no aplicativo.\n\n" +
+                    "Obrigado por escolher a Horizon!\n" +
+                    "Boa viagem!";
+            emailPort.sendEmail(user.getEmail(), subject, body);
+        } catch (Exception e) {
+            log.error("Failed to send payment confirmation email for Reservation ID: {}", saved.getId(), e);
+        }
     }
 }

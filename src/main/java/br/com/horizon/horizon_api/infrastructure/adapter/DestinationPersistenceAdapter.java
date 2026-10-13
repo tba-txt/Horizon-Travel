@@ -21,8 +21,11 @@ public class DestinationPersistenceAdapter implements DestinationPersistencePort
     private final DestinationAttributeRepository attrRepo;
     
     @Override
-    public List<Destination> findActive() {
-        List<DestinationEntity> entities = destRepo.findByActiveTrue();
+    public List<Destination> findActive(Integer page, Integer size) {
+        if (page == null) page = 0;
+        if (size == null) size = 100;
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        List<DestinationEntity> entities = destRepo.findByActiveTrue(pageable).getContent();
         if (entities.isEmpty()) return new ArrayList<>();
         
         List<Long> destIds = entities.stream().map(DestinationEntity::getId).collect(Collectors.toList());

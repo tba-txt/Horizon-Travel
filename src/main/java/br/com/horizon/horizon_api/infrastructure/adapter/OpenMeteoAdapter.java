@@ -60,8 +60,14 @@ public class OpenMeteoAdapter implements WeatherPort {
             int index = timeList.indexOf(targetDateStr);
 
             if (index == -1) {
-                log.info("Data {} não encontrada nos {} dias retornados pela previsão Open-Meteo", targetDate, timeList.size());
-                return Optional.empty();
+                if (!timeList.isEmpty() && !targetDate.isAfter(LocalDate.parse(timeList.get(0)))) {
+                    index = 0;
+                    log.info("Data {} anterior ou no início do fuso local ({}). Usando dia atual local {}.",
+                            targetDate, response.getTimezone(), timeList.get(0));
+                } else {
+                    log.info("Data {} não encontrada nos {} dias retornados pela previsão Open-Meteo", targetDate, timeList.size());
+                    return Optional.empty();
+                }
             }
 
             OpenMeteoForecastResponse.DailyForecast daily = response.getDaily();

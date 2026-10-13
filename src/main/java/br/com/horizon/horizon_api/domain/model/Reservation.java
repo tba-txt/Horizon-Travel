@@ -27,6 +27,7 @@ public class Reservation {
     private OffsetDateTime createdAt;
     private OffsetDateTime paymentDeadline;
     private OffsetDateTime cancelledAt;
+    private Boolean feedbackEmailSent = false;
     
     private List<Passenger> passengers;
     private Payment payment;

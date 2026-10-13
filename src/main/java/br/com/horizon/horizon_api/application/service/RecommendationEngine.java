@@ -41,7 +41,7 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             }
         }
         
-        List<Destination> destinations = destinationPort.findActive();
+        List<Destination> destinations = destinationPort.findActive(0, 10000);
         List<RecommendationResult> results = new ArrayList<>();
         
         for (Destination dest : destinations) {
@@ -98,7 +98,14 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             return r1.destination.getId().compareTo(r2.destination.getId());
         });
         
-        return results.stream().limit(limit).map(r -> {
+        // Apply the limit of max 9 as requested by the user
+        int limitVal = (limit == null || limit <= 0) ? 9 : Math.min(limit, 9);
+        
+        List<RecommendationResponseDTO> finalResults = new ArrayList<>();
+        int i = 0;
+        for (RecommendationResult r : results) {
+            if (i >= limitVal) break;
+            
             RecommendationResponseDTO dto = new RecommendationResponseDTO();
             dto.setDestinationId(r.destination.getId());
             dto.setDestinationName(r.destination.getName());
@@ -108,9 +115,19 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             dto.setImageUrl(r.destination.getImageUrl());
             dto.setBasePrice(r.destination.getBasePrice());
             dto.setScore(r.finalScore);
-            dto.setExplanation(r.explanation);
-            return dto;
-        }).collect(Collectors.toList());
+            
+            // Only explain the top 3
+            if (i < 3) {
+                dto.setExplanation(r.explanation);
+            } else {
+                dto.setExplanation(null);
+            }
+            
+            finalResults.add(dto);
+            i++;
+        }
+        
+        return finalResults;
     }
     
     private BigDecimal calculateCompatibility(List<DestinationAttribute> destAttrs, Map<String, BigDecimal> userMap) {
@@ -119,6 +136,9 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         for (DestinationAttribute da : destAttrs) {
             String attrName = da.getAttributeName() != null ? da.getAttributeName().toLowerCase() : "";
             BigDecimal userScore = userMap.getOrDefault(attrName, BigDecimal.ZERO);
+            if (userScore == null || userScore.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
             BigDecimal diff = userScore.subtract(da.getScore() != null ? da.getScore() : BigDecimal.ZERO).abs();
             BigDecimal match = BigDecimal.ONE.subtract(diff);
             if (match.compareTo(BigDecimal.ZERO) < 0) match = BigDecimal.ZERO;
@@ -136,9 +156,9 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         List<String> behaviorTopAttrs = new ArrayList<>();
         if (dest.getAttributes() != null) {
             for (DestinationAttribute da : dest.getAttributes()) {
-                String name = da.getAttributeName() != null ? da.getAttributeName().toLowerCase() : "";
-                BigDecimal expScore = explicitMap.getOrDefault(name, BigDecimal.ZERO);
-                BigDecimal behScore = behaviorMap.getOrDefault(name, BigDecimal.ZERO);
+                String name = da.getAttributeName() != null ? da.getAttributeName().toLowerCase().replace("_", " ") : "";
+                BigDecimal expScore = explicitMap.getOrDefault(da.getAttributeName() != null ? da.getAttributeName().toLowerCase() : "", BigDecimal.ZERO);
+                BigDecimal behScore = behaviorMap.getOrDefault(da.getAttributeName() != null ? da.getAttributeName().toLowerCase() : "", BigDecimal.ZERO);
                 BigDecimal destScore = da.getScore() != null ? da.getScore() : BigDecimal.ZERO;
                 
                 if (destScore.compareTo(new BigDecimal("0.5")) >= 0) {

@@ -41,6 +41,9 @@ class ReservationServiceTest {
     private br.com.horizon.horizon_api.domain.port.TicketPersistencePort ticketPort;
 
     @Mock
+    private br.com.horizon.horizon_api.domain.port.UserPersistencePort userPort;
+
+    @Mock
     private br.com.horizon.horizon_api.application.mapper.TicketMapper ticketMapper;
 
     @InjectMocks
@@ -53,6 +56,11 @@ class ReservationServiceTest {
 
     @BeforeEach
     void setUp() {
+        br.com.horizon.horizon_api.domain.model.User buyer = new br.com.horizon.horizon_api.domain.model.User();
+        buyer.setId(1L);
+        buyer.setBirthDate(LocalDate.now().minusYears(25));
+        lenient().when(userPort.findById(any())).thenReturn(Optional.of(buyer));
+
         req = new ReservationRequest();
         req.setDestinationId(1L);
         req.setTripType(TripType.ONE_WAY);
@@ -66,12 +74,14 @@ class ReservationServiceTest {
         outFlight = new Flight();
         outFlight.setId(10L);
         outFlight.setDestinationId(1L);
+        outFlight.setActive(true);
         outFlight.setFlightDate(LocalDate.now().plusDays(10));
         outFlight.setPricePerPerson(new BigDecimal("500.00"));
 
         retFlight = new Flight();
         retFlight.setId(20L);
         retFlight.setDestinationId(1L);
+        retFlight.setActive(true);
         retFlight.setFlightDate(LocalDate.now().plusDays(15));
         retFlight.setPricePerPerson(new BigDecimal("400.00"));
     }
@@ -119,7 +129,7 @@ class ReservationServiceTest {
         when(flightPort.getFlightById(10L)).thenReturn(Optional.of(outFlight));
 
         Exception e = assertThrows(IllegalArgumentException.class, () -> service.execute(1L, req));
-        assertTrue(e.getMessage().contains("at least 3 days"));
+        assertTrue(e.getMessage().contains("3 dias"));
     }
 
     @Test
@@ -128,25 +138,25 @@ class ReservationServiceTest {
         when(flightPort.getFlightById(10L)).thenReturn(Optional.of(outFlight));
 
         Exception e = assertThrows(IllegalArgumentException.class, () -> service.execute(1L, req));
-        assertTrue(e.getMessage().contains("exceed 24 months"));
+        assertTrue(e.getMessage().contains("24 meses"));
     }
 
     @Test
     void testRejectsMoreThan5Passengers() {
         req.setPassengers(List.of(p1, p1, p1, p1, p1, p1)); // 6 passengers
         Exception e = assertThrows(IllegalArgumentException.class, () -> service.execute(1L, req));
-        assertTrue(e.getMessage().contains("between 1 and 5"));
+        assertTrue(e.getMessage().contains("1 e 5"));
     }
 
     @Test
     void testRejectsAgeOutside1To99() {
         p1.setAge(100);
         Exception e = assertThrows(IllegalArgumentException.class, () -> service.execute(1L, req));
-        assertTrue(e.getMessage().contains("between 1 and 99"));
+        assertTrue(e.getMessage().contains("1 e 99"));
 
         p1.setAge(0);
         Exception e2 = assertThrows(IllegalArgumentException.class, () -> service.execute(1L, req));
-        assertTrue(e2.getMessage().contains("between 1 and 99"));
+        assertTrue(e2.getMessage().contains("1 e 99"));
     }
 
     @Test
@@ -155,6 +165,6 @@ class ReservationServiceTest {
         when(flightPort.reserveSeats(10L, 1)).thenReturn(false);
 
         Exception e = assertThrows(IllegalStateException.class, () -> service.execute(1L, req));
-        assertTrue(e.getMessage().contains("Not enough seats available"));
+        assertTrue(e.getMessage().contains("assentos suficientes"));
     }
 }

@@ -9,11 +9,22 @@ public class PostResponseDTO {
     private String title;
     private String caption;
     private String imageUrl;
-    private Long destinationId;
     private Boolean published;
     private OffsetDateTime createdAt;
     private List<PostAttributeDTO> attributes;
     private Long likesCount;
     private Long dislikesCount;
     private br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.InteractionType userInteraction;
+    private Long userOptionId;
+    
+    private String postType;
+    private List<ThisOrThatOptionResponse> thisOrThatOptions;
+    
+    @Getter @Setter
+    public static class ThisOrThatOptionResponse {
+        private Long id;
+        private String label;
+        private String image;
+        private Integer votes;
+    }
 }

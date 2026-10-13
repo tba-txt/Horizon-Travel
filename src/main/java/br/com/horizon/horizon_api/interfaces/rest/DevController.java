@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/dev")
-@Profile("dev")
+@Profile({"dev", "default"})
 @RequiredArgsConstructor
 public class DevController {
 

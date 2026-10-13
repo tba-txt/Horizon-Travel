@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "passengers")
+@Table(name = "passengers", indexes = {
+    @Index(name = "idx_passenger_reservation", columnList = "reservation_id")
+})
 @Getter
 @Setter
 public class PassengerEntity {

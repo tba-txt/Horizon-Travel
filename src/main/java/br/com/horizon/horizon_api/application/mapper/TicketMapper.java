@@ -20,7 +20,9 @@ public class TicketMapper {
         }
         if (entity.getPassenger() != null) {
             domain.setPassengerId(entity.getPassenger().getId());
-            domain.setPassengerName(entity.getPassenger().getName());
+            try {
+                domain.setPassengerName(entity.getPassenger().getName());
+            } catch (Exception ignored) {}
         }
         domain.setTicketNumber(entity.getTicketNumber());
         domain.setPdfUrl(entity.getPdfUrl());

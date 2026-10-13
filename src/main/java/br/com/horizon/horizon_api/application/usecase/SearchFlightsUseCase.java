@@ -5,5 +5,5 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface SearchFlightsUseCase {
-    List<FlightResponse> execute(Long destinationId, LocalDate start, LocalDate end);
+    List<FlightResponse> execute(Long destinationId, LocalDate start, LocalDate end, Integer page, Integer size);
 }

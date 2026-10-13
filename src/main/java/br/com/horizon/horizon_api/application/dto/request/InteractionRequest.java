@@ -15,7 +15,10 @@ public class InteractionRequest {
     @Schema(description = "ID do post", example = "1")
     @NotNull private Long postId;
 
-    @Schema(description = "Tipo de interação (aceita apenas LIKE ou DISLIKE)", example = "LIKE", allowableValues = {"LIKE", "DISLIKE"})
-    @NotNull(message = "interactionType é obrigatório (LIKE ou DISLIKE)")
+    @Schema(description = "Tipo de interação (aceita apenas LIKE, DISLIKE ou VOTE)", example = "LIKE", allowableValues = {"LIKE", "DISLIKE", "VOTE"})
+    @NotNull(message = "interactionType é obrigatório")
     private InteractionType interactionType;
+
+    @Schema(description = "ID da opção escolhida (Apenas para THIS_OR_THAT)", example = "1")
+    private Long optionId;
 }

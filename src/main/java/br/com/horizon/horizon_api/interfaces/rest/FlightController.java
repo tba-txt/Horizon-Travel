@@ -22,12 +22,12 @@ public class FlightController {
     private final SearchFlightsUseCase searchFlightsUseCase;
 
     @GetMapping
-    public ResponseEntity<List<FlightResponse>> searchFlights(
+    public ResponseEntity<List<FlightResponse>> searchFlights(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "200") Integer size, 
             @RequestParam Long destinationId,
             @Parameter(example = "2026-11-10") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @Parameter(example = "2026-11-20") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         log.info("Recebida requisição GET /flights para destinationId={}, startDate={}, endDate={}", destinationId, startDate, endDate);
-        List<FlightResponse> result = searchFlightsUseCase.execute(destinationId, startDate, endDate);
+        List<FlightResponse> result = searchFlightsUseCase.execute(destinationId, startDate, endDate, page, size);
         log.info("Retornando {} voos", result.size());
         return ResponseEntity.ok(result);
     }

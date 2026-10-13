@@ -2,6 +2,7 @@ package br.com.horizon.horizon_api.application.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TripType;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -31,5 +32,6 @@ public class ReservationRequest {
     @Schema(description = "Lista de passageiros. O comprador é o usuário autenticado (via JWT).")
     @NotEmpty(message = "At least one passenger is required")
     @Size(min = 1, max = 5, message = "Reservation must have between 1 and 5 passengers")
-    private List<PassengerRequest> passengers;
+    @Valid
+    private List<@Valid PassengerRequest> passengers;
 }

@@ -23,9 +23,10 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<Map<String, String>> handleConflict(ConflictException ex) {
-        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    @ExceptionHandler({ConflictException.class, org.springframework.orm.ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<Map<String, String>> handleConflict(Exception ex) {
+        log.warn("Conflito de estado: {}", ex.getMessage());
+        return buildResponse(HttpStatus.CONFLICT, "Esta reserva ou recurso foi alterado por outra operação recente. Tente novamente.");
     }
 
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
@@ -69,6 +70,12 @@ public class GlobalExceptionHandler {
             }
         }
         return buildResponse(HttpStatus.BAD_REQUEST, "Formato de requisição inválido. Verifique os dados enviados.");
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        log.warn("Arquivo enviado excede o limite de upload permitido: {}", ex.getMessage());
+        return buildResponse(HttpStatus.BAD_REQUEST, "O arquivo enviado excede o tamanho máximo permitido (10MB).");
     }
 
     @ExceptionHandler(Exception.class)

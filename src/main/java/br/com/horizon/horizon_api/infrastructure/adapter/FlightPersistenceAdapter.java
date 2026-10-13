@@ -30,8 +30,8 @@ public class FlightPersistenceAdapter implements FlightPersistencePort {
     }
 
     @Override
-    public List<Flight> getAvailableFlights(Long destinationId, LocalDate start, LocalDate end) {
-        return flightRepository.findAvailableFlights(destinationId, start, end)
+    public List<Flight> getAvailableFlights(Long destinationId, LocalDate start, LocalDate end, Integer page, Integer size) {
+        return flightRepository.findAvailableFlights(destinationId, start, end, org.springframework.data.domain.PageRequest.of(page != null ? page : 0, size != null ? size : 200))
                 .stream().map(this::toDomain).collect(Collectors.toList());
     }
 
@@ -68,6 +68,10 @@ public class FlightPersistenceAdapter implements FlightPersistencePort {
         f.setPriceExecutive(entity.getPriceExecutive());
         f.setPricePremium(entity.getPricePremium());
         f.setActive(entity.getActive());
+        if (entity.getAvailability() != null) {
+            f.setAvailableSeats(entity.getAvailability().getAvailableSeats());
+            f.setTotalSeats(entity.getAvailability().getTotalSeats());
+        }
         return f;
     }
 

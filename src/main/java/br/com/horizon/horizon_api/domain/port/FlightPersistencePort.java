@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public interface FlightPersistencePort {
     Optional<Flight> getFlightById(Long id);
-    List<Flight> getAvailableFlights(Long destinationId, LocalDate start, LocalDate end);
+    List<Flight> getAvailableFlights(Long destinationId, LocalDate start, LocalDate end, Integer page, Integer size);
     Optional<FlightAvailability> getAvailabilityByFlightId(Long flightId);
     boolean reserveSeats(Long flightId, int seats);
     boolean releaseSeats(Long flightId, int seats);

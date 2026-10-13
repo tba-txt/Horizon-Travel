@@ -9,7 +9,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "flights")
+@Table(name = "flights", indexes = {
+    @Index(name = "idx_flight_destination", columnList = "destination_id"),
+    @Index(name = "idx_flight_date", columnList = "flight_date"),
+    @Index(name = "idx_flight_active", columnList = "active")
+})
 @Getter
 @Setter
 public class FlightEntity {
@@ -51,4 +55,7 @@ public class FlightEntity {
 
     @Column(name = "active")
     private Boolean active;
+
+    @OneToOne(mappedBy = "flight", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private FlightAvailabilityEntity availability;
 }

@@ -27,7 +27,7 @@ public class FlightService implements SearchFlightsUseCase {
     private final DestinationPersistencePort destinationPort;
 
     @Override
-    public List<FlightResponse> execute(Long destinationId, LocalDate start, LocalDate end) {
+    public List<FlightResponse> execute(Long destinationId, LocalDate start, LocalDate end, Integer page, Integer size) {
         if (destinationPort.findById(destinationId).isEmpty()) {
             throw new ResourceNotFoundException("Destino não encontrado.");
         }
@@ -39,7 +39,7 @@ public class FlightService implements SearchFlightsUseCase {
             end = start.plusMonths(24);
         }
         
-        List<Flight> flights = flightPort.getAvailableFlights(destinationId, start, end);
+        List<Flight> flights = flightPort.getAvailableFlights(destinationId, start, end, page, size);
         log.info("Service: searchFlights destinationId={}, start={}, end={} - Encontrados {} voos", destinationId, start, end, flights.size());
         
         return flights.stream().map(f -> {
@@ -56,13 +56,8 @@ public class FlightService implements SearchFlightsUseCase {
             r.setPriceExecutive(f.getPriceExecutive());
             r.setPricePremium(f.getPricePremium());
             
-            // To be totally precise, since we need available_seats, we should fetch it.
-            // Even though this is N+1, we can optimize later or since the list is short, it's ok for now.
-            // Wait, I will just call getAvailabilityByFlightId. It's fully cached in Hibernate session usually if we joined, but we didn't FETCH join.
-            flightPort.getAvailabilityByFlightId(f.getId()).ifPresent(av -> {
-                r.setTotalSeats(av.getTotalSeats());
-                r.setAvailableSeats(av.getAvailableSeats());
-            });
+            r.setTotalSeats(f.getTotalSeats());
+            r.setAvailableSeats(f.getAvailableSeats());
             
             return r;
         }).collect(Collectors.toList());

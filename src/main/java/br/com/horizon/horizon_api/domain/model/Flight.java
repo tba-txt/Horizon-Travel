@@ -21,4 +21,6 @@ public class Flight {
     private BigDecimal priceExecutive;
     private BigDecimal pricePremium;
     private Boolean active;
+    private Integer totalSeats;
+    private Integer availableSeats;
 }

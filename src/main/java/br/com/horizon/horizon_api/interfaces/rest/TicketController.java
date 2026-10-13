@@ -12,11 +12,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/tickets")
 @RequiredArgsConstructor
+@Tag(name = "Bilhetes", description = "Endpoints para consulta e download de bilhetes/passagens")
 public class TicketController {
 
     private final TicketPersistencePort ticketPort;
@@ -26,6 +29,22 @@ public class TicketController {
     private final TicketMapper ticketMapper;
     private final GetReservationTicketsUseCase getReservationTicketsUseCase;
 
+    @Operation(summary = "Listar meus bilhetes", description = "Retorna todos os bilhetes emitidos das viagens do usuário autenticado.")
+    @GetMapping("/my")
+    public ResponseEntity<List<TicketResponse>> getMyTickets() {
+        Long userId = SecurityUtils.getAuthenticatedUserId();
+        List<Reservation> userReservations = reservationPort.findByUserId(userId);
+        List<TicketResponse> allTickets = new java.util.ArrayList<>();
+        for (Reservation res : userReservations) {
+            List<Ticket> tickets = ticketPort.findByReservationId(res.getId());
+            for (Ticket t : tickets) {
+                allTickets.add(ticketMapper.toResponse(t));
+            }
+        }
+        return ResponseEntity.ok(allTickets);
+    }
+
+    @Operation(summary = "Obter bilhete por ID", description = "Retorna os detalhes de um bilhete específico.")
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponse> getById(@PathVariable Long id) {
         Long userId = SecurityUtils.getAuthenticatedUserId();
@@ -38,15 +57,45 @@ public class TicketController {
         }).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Listar bilhetes por reserva", description = "Retorna os bilhetes de todos os passageiros de uma reserva específica.")
     @GetMapping("/reservation/{reservationId}")
     public ResponseEntity<List<TicketResponse>> getByReservationId(@PathVariable Long reservationId) {
         Long userId = SecurityUtils.getAuthenticatedUserId();
         return ResponseEntity.ok(getReservationTicketsUseCase.execute(reservationId, userId));
     }
 
+    @Operation(summary = "Baixar bilhete em PDF", description = "Gera e baixa o cartão de embarque oficial em formato PDF.")
     @GetMapping("/{ticketNumber}/download")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<byte[]> downloadPdf(@PathVariable String ticketNumber) {
         Long userId = SecurityUtils.getAuthenticatedUserId();
+        if (ticketNumber != null && ticketNumber.startsWith("RES-")) {
+            try {
+                Long resId = Long.parseLong(ticketNumber.substring(4));
+                java.util.Optional<Reservation> resOpt = reservationPort.findByIdAndUserId(resId, userId);
+                if (resOpt.isEmpty()) {
+                    return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+                }
+                Reservation res = resOpt.get();
+                List<Ticket> existingTickets = ticketPort.findByReservationId(res.getId());
+                Ticket ticket;
+                if (existingTickets != null && !existingTickets.isEmpty()) {
+                    ticket = existingTickets.get(0);
+                } else {
+                    ticket = new Ticket();
+                    ticket.setReservationId(res.getId());
+                    ticket.setTicketNumber("HZ-" + java.time.LocalDate.now().getYear() + "-R" + res.getId());
+                    if (res.getPassengers() != null && !res.getPassengers().isEmpty()) {
+                        ticket.setPassengerName(res.getPassengers().get(0).getName());
+                    } else {
+                        ticket.setPassengerName("Passageiro Horizon");
+                    }
+                    ticket.setGeneratedAt(java.time.OffsetDateTime.now());
+                }
+                return generatePdfResponse(ticket, res);
+            } catch (NumberFormatException ignored) {}
+        }
+
         java.util.Optional<Ticket> ticketOpt = ticketPort.findByTicketNumber(ticketNumber);
         if (ticketOpt.isEmpty()) {
             try {
@@ -67,45 +116,66 @@ public class TicketController {
             return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
         }
         Reservation res = resOpt.get();
+        return generatePdfResponse(ticket, res);
+    }
+
+    private ResponseEntity<byte[]> generatePdfResponse(Ticket ticket, Reservation res) {
 
         try (java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
             com.itextpdf.text.Document document = new com.itextpdf.text.Document();
             com.itextpdf.text.pdf.PdfWriter.getInstance(document, out);
             document.open();
             
-            com.itextpdf.text.Font titleFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 18);
-            com.itextpdf.text.Font sectionFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 13);
-            com.itextpdf.text.Font textFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA, 11);
+            com.itextpdf.text.Font titleFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 24, new com.itextpdf.text.BaseColor(72, 149, 204));
+            com.itextpdf.text.Font subtitleFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 14, com.itextpdf.text.BaseColor.DARK_GRAY);
+            com.itextpdf.text.Font textFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA, 11, com.itextpdf.text.BaseColor.BLACK);
+            com.itextpdf.text.Font boldFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD, 12, com.itextpdf.text.BaseColor.BLACK);
             
-            document.add(new com.itextpdf.text.Paragraph("HORIZON TRAVEL - CARTAO DE EMBARQUE", titleFont));
-            document.add(new com.itextpdf.text.Paragraph("==================================================", textFont));
+            // Try to load a beautiful airplane banner image
+            try {
+                com.itextpdf.text.Image banner = com.itextpdf.text.Image.getInstance(new java.net.URL("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=800&auto=format&fit=crop"));
+                banner.scaleToFit(520, 150);
+                banner.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+                document.add(banner);
+            } catch (Exception ignored) {}
+
+            document.add(new com.itextpdf.text.Paragraph(" "));
+            
+            com.itextpdf.text.Paragraph header = new com.itextpdf.text.Paragraph("HORIZON TRAVEL", titleFont);
+            header.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+            document.add(header);
+            
+            com.itextpdf.text.Paragraph subHeader = new com.itextpdf.text.Paragraph("CARTÃO DE EMBARQUE OFICIAL", subtitleFont);
+            subHeader.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+            document.add(subHeader);
+            
+            document.add(new com.itextpdf.text.Paragraph(" "));
+            document.add(new com.itextpdf.text.Paragraph("---------------------------------------------------------------------------------------------------", textFont));
             
             // Passenger & Ticket Info
-            document.add(new com.itextpdf.text.Paragraph("Passageiro: " + ticket.getPassengerName(), textFont));
-            document.add(new com.itextpdf.text.Paragraph("Numero do Bilhete: " + ticket.getTicketNumber(), textFont));
-            document.add(new com.itextpdf.text.Paragraph("Codigo da Reserva: #" + ticket.getReservationId(), textFont));
+            String pName = (ticket.getPassengerName() != null && !ticket.getPassengerName().isBlank()) ? ticket.getPassengerName() : "Passageiro";
+            document.add(new com.itextpdf.text.Paragraph("PASSAGEIRO: " + pName.toUpperCase(), boldFont));
+            document.add(new com.itextpdf.text.Paragraph("Nº DO BILHETE: " + ticket.getTicketNumber(), textFont));
+            document.add(new com.itextpdf.text.Paragraph("RESERVA: #" + ticket.getReservationId(), textFont));
             
             if (res.getDestinationId() != null && destinationPort != null) {
                 destinationPort.findById(res.getDestinationId()).ifPresent(dest -> {
                     try {
-                        document.add(new com.itextpdf.text.Paragraph("Destino: " + dest.getName() + ", " + dest.getCountry(), textFont));
+                        document.add(new com.itextpdf.text.Paragraph("DESTINO: " + dest.getName() + ", " + dest.getCountry(), textFont));
                     } catch (com.itextpdf.text.DocumentException ignored) {}
                 });
             }
             
-            document.add(new com.itextpdf.text.Paragraph("Tipo de Viagem: " + res.getTripType(), textFont));
-            document.add(new com.itextpdf.text.Paragraph("--------------------------------------------------", textFont));
+            document.add(new com.itextpdf.text.Paragraph("---------------------------------------------------------------------------------------------------", textFont));
 
             // Outbound Flight Details
             if (res.getOutboundFlightId() != null && flightPort != null) {
                 flightPort.getFlightById(res.getOutboundFlightId()).ifPresent(outbound -> {
                     try {
-                        document.add(new com.itextpdf.text.Paragraph("VOO DE IDA", sectionFont));
-                        document.add(new com.itextpdf.text.Paragraph("Voo: " + outbound.getFlightNumber(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Origem: " + outbound.getOriginAirportCode() + " -> Destino: " + outbound.getDestinationAirportCode(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Data: " + outbound.getFlightDate(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Horario de Partida: " + outbound.getDepartureTime() + " | Horario de Chegada: " + outbound.getArrivalTime(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("--------------------------------------------------", textFont));
+                        document.add(new com.itextpdf.text.Paragraph("✈ VOO DE IDA", subtitleFont));
+                        document.add(new com.itextpdf.text.Paragraph("Voo: " + outbound.getFlightNumber() + " | " + outbound.getOriginAirportCode() + " ➔ " + outbound.getDestinationAirportCode(), boldFont));
+                        document.add(new com.itextpdf.text.Paragraph("Data: " + outbound.getFlightDate() + " | Horário de Embarque: " + outbound.getDepartureTime(), textFont));
+                        document.add(new com.itextpdf.text.Paragraph(" "));
                     } catch (com.itextpdf.text.DocumentException ignored) {}
                 });
             }
@@ -115,18 +185,20 @@ public class TicketController {
                 res.getReturnFlightId() != null && flightPort != null) {
                 flightPort.getFlightById(res.getReturnFlightId()).ifPresent(retFlight -> {
                     try {
-                        document.add(new com.itextpdf.text.Paragraph("VOO DE VOLTA", sectionFont));
-                        document.add(new com.itextpdf.text.Paragraph("Voo: " + retFlight.getFlightNumber(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Origem: " + retFlight.getOriginAirportCode() + " -> Destino: " + retFlight.getDestinationAirportCode(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Data: " + retFlight.getFlightDate(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("Horario de Partida: " + retFlight.getDepartureTime() + " | Horario de Chegada: " + retFlight.getArrivalTime(), textFont));
-                        document.add(new com.itextpdf.text.Paragraph("--------------------------------------------------", textFont));
+                        document.add(new com.itextpdf.text.Paragraph("✈ VOO DE VOLTA", subtitleFont));
+                        document.add(new com.itextpdf.text.Paragraph("Voo: " + retFlight.getFlightNumber() + " | " + retFlight.getOriginAirportCode() + " ➔ " + retFlight.getDestinationAirportCode(), boldFont));
+                        document.add(new com.itextpdf.text.Paragraph("Data: " + retFlight.getFlightDate() + " | Horário de Embarque: " + retFlight.getDepartureTime(), textFont));
+                        document.add(new com.itextpdf.text.Paragraph(" "));
                     } catch (com.itextpdf.text.DocumentException ignored) {}
                 });
             }
 
-            document.add(new com.itextpdf.text.Paragraph("Bilhete emitido em: " + ticket.getGeneratedAt(), textFont));
-            document.add(new com.itextpdf.text.Paragraph("Tenha uma excelente viagem com a Horizon!", textFont));
+            document.add(new com.itextpdf.text.Paragraph("---------------------------------------------------------------------------------------------------", textFont));
+            
+            com.itextpdf.text.Font footerFont = com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA, 10, com.itextpdf.text.Font.ITALIC, com.itextpdf.text.BaseColor.GRAY);
+            com.itextpdf.text.Paragraph footer = new com.itextpdf.text.Paragraph("Emitido em: " + ticket.getGeneratedAt() + "\nTenha uma excelente viagem com a Horizon Travel!", footerFont);
+            footer.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);
+            document.add(footer);
             
             document.close();
             

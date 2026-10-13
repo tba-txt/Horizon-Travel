@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
 import java.math.BigDecimal;
 import java.util.*;
 import static org.mockito.Mockito.*;
@@ -29,7 +30,7 @@ class RecommendationEngineTest {
         
         Destination d = new Destination();
         d.setId(10L); d.setBasePrice(new BigDecimal("1000"));
-        when(destinationPort.findActive()).thenReturn(List.of(d));
+        when(destinationPort.findActive(Mockito.any(), Mockito.any())).thenReturn(List.of(d));
         
         List<RecommendationResponseDTO> res = engine.execute(1L, 10);
         assertEquals(1, res.size());
@@ -38,10 +39,12 @@ class RecommendationEngineTest {
     
     @Test void shouldApplyBudgetFactorCorrectly() {
         UserProfileAttribute u1 = new UserProfileAttribute(); u1.setAttributeName("natureza"); u1.setScore(new BigDecimal("1.0"));
-        when(explicitPort.getUserProfilesByUserId(1L)).thenReturn(List.of(u1));
+        UserProfileAttribute u2 = new UserProfileAttribute(); u2.setAttributeName("aventura"); u2.setScore(new BigDecimal("1.0"));
+        when(explicitPort.getUserProfilesByUserId(1L)).thenReturn(List.of(u1, u2));
         
-        BehaviorProfileAttribute b1 = new BehaviorProfileAttribute(); b1.setAttributeName("aventura"); b1.setScore(new BigDecimal("1.0"));
-        when(behaviorPort.getBehaviorProfilesByUserId(1L)).thenReturn(List.of(b1));
+        BehaviorProfileAttribute b1 = new BehaviorProfileAttribute(); b1.setAttributeName("natureza"); b1.setScore(new BigDecimal("1.0"));
+        BehaviorProfileAttribute b2 = new BehaviorProfileAttribute(); b2.setAttributeName("aventura"); b2.setScore(new BigDecimal("1.0"));
+        when(behaviorPort.getBehaviorProfilesByUserId(1L)).thenReturn(List.of(b1, b2));
         
         UserProfile profile = new UserProfile();
         profile.setBudgetPerPerson(new BigDecimal("2000"));
@@ -72,7 +75,7 @@ class RecommendationEngineTest {
         DestinationAttribute da8 = new DestinationAttribute(); da8.setAttributeName("aventura"); da8.setScore(new BigDecimal("1.0"));
         d4.setAttributes(List.of(da7, da8));
         
-        when(destinationPort.findActive()).thenReturn(List.of(d1, d2, d3, d4));
+        when(destinationPort.findActive(Mockito.any(), Mockito.any())).thenReturn(List.of(d1, d2, d3, d4));
 
         
         List<RecommendationResponseDTO> res = engine.execute(1L, 10);
