@@ -9,4 +9,7 @@ import org.springframework.stereotype.Repository;
 public interface PostAttributeRepository extends JpaRepository<PostAttributeEntity, PostAttributeId> {
     @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"attribute"})
     java.util.List<br.com.horizon.horizon_api.infrastructure.persistence.entity.PostAttributeEntity> findByPost_Id(Long postId);
+
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"attribute"})
+    java.util.List<br.com.horizon.horizon_api.infrastructure.persistence.entity.PostAttributeEntity> findByPost_IdIn(java.util.List<Long> postIds);
 }

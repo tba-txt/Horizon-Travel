@@ -90,7 +90,69 @@ public class PostPersistenceAdapter implements PostPersistencePort, PostAttribut
     
     @Override
     public List<Post> findPublished(Integer page, Integer size) {
-        return postRepo.findByPublishedTrue(org.springframework.data.domain.PageRequest.of(page != null ? page : 0, size != null ? size : 100)).stream().map(this::map).collect(Collectors.toList());
+        if (page == null) page = 0;
+        if (size == null) size = 100;
+        List<PostEntity> entities = postRepo.findByPublishedTrue(org.springframework.data.domain.PageRequest.of(page, size));
+        if (entities.isEmpty()) return new java.util.ArrayList<>();
+
+        List<Long> postIds = entities.stream().map(PostEntity::getId).collect(Collectors.toList());
+
+        // 1. Carrega todos os atributos de todos os posts em UMA ÚNICA consulta JOIN FETCH
+        List<PostAttributeEntity> allAttrs = attrRepo.findByPost_IdIn(postIds);
+        java.util.Map<Long, List<PostAttribute>> attrsByPost = allAttrs.stream().map(a -> {
+            PostAttribute pa = new PostAttribute();
+            pa.setPostId(a.getPost().getId());
+            pa.setAttributeId(a.getAttribute().getId());
+            pa.setAttributeName(a.getAttribute() != null ? a.getAttribute().getName() : null);
+            pa.setWeight(a.getWeight());
+            return pa;
+        }).collect(Collectors.groupingBy(PostAttribute::getPostId));
+
+        // 2. Carrega todas as opções de Isso ou Aquilo em UMA ÚNICA consulta SQL
+        java.util.Map<Long, List<Post.PostOption>> optionsByPost = new java.util.HashMap<>();
+        List<Long> thisOrThatIds = entities.stream()
+            .filter(e -> "THIS_OR_THAT".equalsIgnoreCase(e.getPostType()))
+            .map(PostEntity::getId)
+            .collect(Collectors.toList());
+
+        if (!thisOrThatIds.isEmpty()) {
+            String inSql = String.join(",", java.util.Collections.nCopies(thisOrThatIds.size(), "?"));
+            jdbcTemplate.query(
+                "SELECT id, post_id, label, image_url, votes_count FROM post_options WHERE post_id IN (" + inSql + ") ORDER BY id",
+                ps -> {
+                    for (int i = 0; i < thisOrThatIds.size(); i++) {
+                        ps.setLong(i + 1, thisOrThatIds.get(i));
+                    }
+                },
+                rs -> {
+                    Long postId = rs.getLong("post_id");
+                    Post.PostOption opt = new Post.PostOption();
+                    opt.setId(rs.getLong("id"));
+                    opt.setLabel(rs.getString("label"));
+                    opt.setImage(rs.getString("image_url"));
+                    opt.setVotes(rs.getInt("votes_count"));
+                    optionsByPost.computeIfAbsent(postId, k -> new java.util.ArrayList<>()).add(opt);
+                }
+            );
+        }
+
+        // 3. Monta os modelos em memória sem disparar nenhuma query adicional (N+1 eliminado)
+        return entities.stream().map(e -> {
+            Post p = new Post();
+            p.setId(e.getId());
+            p.setTitle(e.getTitle());
+            p.setCaption(e.getCaption());
+            p.setImageUrl(e.getImageUrl());
+            p.setPublished(e.getPublished());
+            p.setCreatedAt(e.getCreatedAt());
+            p.setUpdatedAt(e.getUpdatedAt());
+            p.setLikesCount(e.getLikesCount() != null ? e.getLikesCount() : 0L);
+            p.setDislikesCount(e.getDislikesCount() != null ? e.getDislikesCount() : 0L);
+            p.setPostType(e.getPostType());
+            p.setAttributes(attrsByPost.getOrDefault(e.getId(), new java.util.ArrayList<>()));
+            p.setOptions(optionsByPost.getOrDefault(e.getId(), new java.util.ArrayList<>()));
+            return p;
+        }).collect(Collectors.toList());
     }
     
     @Override
