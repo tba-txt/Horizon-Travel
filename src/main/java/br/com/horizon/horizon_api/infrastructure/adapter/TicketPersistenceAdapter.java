@@ -66,6 +66,14 @@ public class TicketPersistenceAdapter implements TicketPersistencePort {
     }
 
     @Override
+    public List<Ticket> findByReservationIdIn(List<Long> reservationIds) {
+        if (reservationIds == null || reservationIds.isEmpty()) return List.of();
+        return repository.findByReservation_IdIn(reservationIds).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<Ticket> findByReservationId(Long reservationId) {
         return repository.findByReservationId(reservationId).stream()
                 .map(mapper::toDomain)

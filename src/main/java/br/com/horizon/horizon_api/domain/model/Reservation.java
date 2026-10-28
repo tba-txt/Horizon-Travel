@@ -28,6 +28,11 @@ public class Reservation {
     private OffsetDateTime paymentDeadline;
     private OffsetDateTime cancelledAt;
     private Boolean feedbackEmailSent = false;
+
+    private String destinationName;
+    private Flight outboundFlight;
+    private Flight returnFlight;
+    private List<Ticket> tickets;
     
     private List<Passenger> passengers;
     private Payment payment;

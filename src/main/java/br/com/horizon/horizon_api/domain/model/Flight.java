@@ -16,6 +16,7 @@ public class Flight {
     private LocalDate flightDate;
     private LocalTime departureTime;
     private LocalTime arrivalTime;
+    private Integer durationMinutes;
     private String flightNumber;
     private BigDecimal pricePerPerson;
     private BigDecimal priceExecutive;

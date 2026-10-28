@@ -26,6 +26,20 @@ public class FlightService implements SearchFlightsUseCase {
     private final FlightPersistencePort flightPort;
     private final DestinationPersistencePort destinationPort;
 
+    private Integer resolveDurationMinutes(Flight f) {
+        if (f.getDurationMinutes() != null) {
+            return f.getDurationMinutes();
+        }
+        if (f.getDepartureTime() == null || f.getArrivalTime() == null) {
+            return null;
+        }
+        long diff = java.time.Duration.between(f.getDepartureTime(), f.getArrivalTime()).toMinutes();
+        if (diff < 0) {
+            diff += 24 * 60;
+        }
+        return (int) diff;
+    }
+
     @Override
     public List<FlightResponse> execute(Long destinationId, LocalDate start, LocalDate end, Integer page, Integer size) {
         if (destinationPort.findById(destinationId).isEmpty()) {
@@ -51,6 +65,7 @@ public class FlightService implements SearchFlightsUseCase {
             r.setFlightDate(f.getFlightDate());
             r.setDepartureTime(f.getDepartureTime());
             r.setArrivalTime(f.getArrivalTime());
+            r.setDurationMinutes(resolveDurationMinutes(f));
             r.setFlightNumber(f.getFlightNumber());
             r.setPricePerPerson(f.getPricePerPerson());
             r.setPriceExecutive(f.getPriceExecutive());

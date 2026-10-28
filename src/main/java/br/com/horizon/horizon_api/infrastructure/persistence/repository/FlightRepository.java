@@ -18,11 +18,16 @@ public interface FlightRepository extends JpaRepository<FlightEntity, Long> {
     @Query("SELECT f FROM FlightEntity f JOIN FETCH f.availability fa " +
            "WHERE f.destination.id = :destinationId AND f.active = true " +
            "AND f.flightDate BETWEEN :start AND :end " +
-           "AND fa.availableSeats > 0")
+           "AND fa.availableSeats > 0 " +
+           "ORDER BY f.flightDate ASC, f.departureTime ASC")
     List<FlightEntity> findAvailableFlights(
             @Param("destinationId") Long destinationId, 
             @Param("start") LocalDate start, 
             @Param("end") LocalDate end, org.springframework.data.domain.Pageable pageable);
+
+    @Override
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"availability", "destination"})
+    List<FlightEntity> findAll();
 
     Optional<FlightEntity> findByIdAndActiveTrue(Long id);
 

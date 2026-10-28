@@ -145,10 +145,17 @@ public class ReservationPersistenceAdapter implements ReservationPersistencePort
         Reservation r = new Reservation();
         r.setId(entity.getId());
         r.setUserId(entity.getUser().getId());
-        r.setDestinationId(entity.getDestination().getId());
-        r.setOutboundFlightId(entity.getOutboundFlight().getId());
+        if (entity.getDestination() != null) {
+            r.setDestinationId(entity.getDestination().getId());
+            r.setDestinationName(entity.getDestination().getName());
+        }
+        if (entity.getOutboundFlight() != null) {
+            r.setOutboundFlightId(entity.getOutboundFlight().getId());
+            r.setOutboundFlight(mapFlightEntityToDomain(entity.getOutboundFlight()));
+        }
         if (entity.getReturnFlight() != null) {
             r.setReturnFlightId(entity.getReturnFlight().getId());
+            r.setReturnFlight(mapFlightEntityToDomain(entity.getReturnFlight()));
         }
         r.setTripType(entity.getTripType());
         r.setDepartureDate(entity.getDepartureDate());
@@ -186,5 +193,26 @@ public class ReservationPersistenceAdapter implements ReservationPersistencePort
         }
 
         return r;
+    }
+
+    private br.com.horizon.horizon_api.domain.model.Flight mapFlightEntityToDomain(FlightEntity fe) {
+        if (fe == null) return null;
+        br.com.horizon.horizon_api.domain.model.Flight f = new br.com.horizon.horizon_api.domain.model.Flight();
+        f.setId(fe.getId());
+        if (fe.getDestination() != null) {
+            f.setDestinationId(fe.getDestination().getId());
+        }
+        f.setOriginAirportCode(fe.getOriginAirportCode());
+        f.setDestinationAirportCode(fe.getDestinationAirportCode());
+        f.setFlightDate(fe.getFlightDate());
+        f.setDepartureTime(fe.getDepartureTime());
+        f.setArrivalTime(fe.getArrivalTime());
+        f.setDurationMinutes(fe.getDurationMinutes());
+        f.setFlightNumber(fe.getFlightNumber());
+        f.setPricePerPerson(fe.getPricePerPerson());
+        f.setPriceExecutive(fe.getPriceExecutive());
+        f.setPricePremium(fe.getPricePremium());
+        f.setActive(fe.getActive());
+        return f;
     }
 }

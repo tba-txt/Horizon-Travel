@@ -33,11 +33,13 @@ public class DestinationPersistenceAdapter implements DestinationPersistencePort
         
         Map<Long, List<DestinationAttribute>> attrsByDest = allAttrs.stream().map(a -> {
             DestinationAttribute da = new DestinationAttribute();
-            da.setAttributeId(a.getAttribute().getId());
+            Long attrId = a.getId() != null ? a.getId().getAttributeId() : (a.getAttribute() != null ? a.getAttribute().getId() : null);
+            Long destId = a.getId() != null ? a.getId().getDestinationId() : (a.getDestination() != null ? a.getDestination().getId() : null);
+            da.setAttributeId(attrId);
             if (a.getAttribute() != null) da.setAttributeName(a.getAttribute().getName());
             da.setScore(a.getScore());
-            return new Object[]{a.getDestination().getId(), da};
-        }).collect(Collectors.groupingBy(
+            return new Object[]{destId, da};
+        }).filter(arr -> arr[0] != null).collect(Collectors.groupingBy(
             arr -> (Long) arr[0],
             Collectors.mapping(arr -> (DestinationAttribute) arr[1], Collectors.toList())
         ));
@@ -54,6 +56,7 @@ public class DestinationPersistenceAdapter implements DestinationPersistencePort
             d.setLatitude(e.getLatitude());
             d.setLongitude(e.getLongitude());
             d.setActive(e.getActive());
+            d.setRequiresPassport(e.getRequiresPassport() != null ? e.getRequiresPassport() : true);
             d.setCreatedAt(e.getCreatedAt());
             d.setAttributes(attrsByDest.getOrDefault(e.getId(), new ArrayList<>()));
             return d;
@@ -74,6 +77,7 @@ public class DestinationPersistenceAdapter implements DestinationPersistencePort
             d.setLatitude(e.getLatitude());
             d.setLongitude(e.getLongitude());
             d.setActive(e.getActive());
+            d.setRequiresPassport(e.getRequiresPassport() != null ? e.getRequiresPassport() : true);
             d.setCreatedAt(e.getCreatedAt());
             return d;
         });

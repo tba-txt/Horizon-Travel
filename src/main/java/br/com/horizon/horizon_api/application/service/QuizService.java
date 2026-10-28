@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -66,7 +67,7 @@ public class QuizService implements GetActiveQuizUseCase, GetQuizQuestionsUseCas
         if (req.getBudgetPerPerson() == null || 
             req.getBudgetPerPerson().compareTo(new BigDecimal("1000")) < 0 || 
             req.getBudgetPerPerson().compareTo(new BigDecimal("200000")) > 0) {
-            throw new BusinessException("O oramento deve estar entre R$ 1.000,00 e R$ 200.000,00.");
+            throw new BusinessException("O orçamento deve estar entre R$ 1.000,00 e R$ 200.000,00.");
         }
         
         // Validate user
@@ -83,21 +84,55 @@ public class QuizService implements GetActiveQuizUseCase, GetQuizQuestionsUseCas
             }
         }
         
+        // Normalize answers (support single answer or multiple answers per question)
+        Map<Long, List<Long>> normalizedAnswers = new HashMap<>();
+        if (req.getAnswers() != null) {
+            for (Map.Entry<Long, Object> entry : req.getAnswers().entrySet()) {
+                Long qId = entry.getKey();
+                Object val = entry.getValue();
+                List<Long> aIds = new ArrayList<>();
+                if (val instanceof List<?> list) {
+                    for (Object item : list) {
+                        if (item instanceof Number n) {
+                            aIds.add(n.longValue());
+                        } else if (item != null) {
+                            try {
+                                aIds.add(Long.valueOf(item.toString().trim()));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                } else if (val instanceof Number n) {
+                    aIds.add(n.longValue());
+                } else if (val != null) {
+                    try {
+                        aIds.add(Long.valueOf(val.toString().trim()));
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (!aIds.isEmpty()) {
+                    normalizedAnswers.put(qId, aIds);
+                }
+            }
+        }
+        
         // Mandatory question 1
-        if (mandatoryQuestionId != null && !req.getAnswers().containsKey(mandatoryQuestionId)) {
+        if (mandatoryQuestionId != null && (!normalizedAnswers.containsKey(mandatoryQuestionId) || normalizedAnswers.get(mandatoryQuestionId).isEmpty())) {
             throw new BusinessException("A pergunta obrigatória deve ser respondida.");
         }
         
-        for (Map.Entry<Long, Long> entry : req.getAnswers().entrySet()) {
+        List<Long> allAnswerIds = new ArrayList<>();
+        for (Map.Entry<Long, List<Long>> entry : normalizedAnswers.entrySet()) {
             Long qId = entry.getKey();
-            Long aId = entry.getValue();
+            List<Long> aIds = entry.getValue();
             if (!validQuestionIds.contains(qId)) {
                 throw new BusinessException("Pergunta inválida para o quiz ativo: " + qId);
             }
             List<Answer> validAnswers = answerPort.getAnswersByQuestionId(qId);
-            boolean isValidAnswer = validAnswers.stream().anyMatch(a -> a.getId().equals(aId));
-            if (!isValidAnswer) {
-                throw new BusinessException("Resposta inválida para a pergunta: " + qId);
+            Set<Long> validAnswerIds = validAnswers.stream().map(Answer::getId).collect(Collectors.toSet());
+            for (Long aId : aIds) {
+                if (!validAnswerIds.contains(aId)) {
+                    throw new BusinessException("Resposta inválida para a pergunta: " + qId);
+                }
+                allAnswerIds.add(aId);
             }
         }
         
@@ -105,12 +140,7 @@ public class QuizService implements GetActiveQuizUseCase, GetQuizQuestionsUseCas
         OffsetDateTime now = OffsetDateTime.now();
         List<QuizResponse> history = new ArrayList<>();
         
-        List<Long> ansIds = new ArrayList<>(req.getAnswers().values());
-        List<Answer> answers = answerPort.getAnswersByIds(ansIds);
-        
-        if (answers.size() != req.getAnswers().size()) {
-            throw new BusinessException("Resposta inválida para a pergunta informada.");
-        }
+        List<Answer> answers = answerPort.getAnswersByIds(allAnswerIds);
         
         for (Answer a : answers) {
             QuizResponse qr = new QuizResponse();
@@ -153,11 +183,14 @@ public class QuizService implements GetActiveQuizUseCase, GetQuizQuestionsUseCas
         
         explicitPort.saveAll(newProfile);
         
-        // Save Budget
-        UserProfile profile = new UserProfile();
+        // Save Budget & Passport preference
+        UserProfile profile = userProfilePort.findByUserId(req.getUserId()).orElse(new UserProfile());
         profile.setUserId(req.getUserId());
         profile.setBudgetPerPerson(req.getBudgetPerPerson());
-        profile.setCreatedAt(now);
+        profile.setHasPassport(req.getHasPassport() != null ? req.getHasPassport() : true);
+        if (profile.getCreatedAt() == null) {
+            profile.setCreatedAt(now);
+        }
         profile.setUpdatedAt(now);
         userProfilePort.save(profile);
     }

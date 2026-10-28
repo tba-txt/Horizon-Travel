@@ -44,6 +44,10 @@ public class FeedbackPersistenceAdapter implements FeedbackPersistencePort {
                 entity.setReservation(reservationRepository.findById(domain.getReservationId()).orElse(null));
             }
         }
+        // Ensure answeredAt is never null
+        if (entity.getAnsweredAt() == null) {
+            entity.setAnsweredAt(java.time.OffsetDateTime.now());
+        }
         FeedbackEntity saved = repository.save(entity);
         return mapper.toDomain(saved);
     }

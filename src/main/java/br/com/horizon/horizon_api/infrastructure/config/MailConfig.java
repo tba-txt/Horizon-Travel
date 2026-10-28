@@ -44,7 +44,10 @@ public class MailConfig {
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.starttls.required", "true");
         props.put("mail.smtp.ssl.trust", "smtp.gmail.com");
-        props.put("mail.debug", "true");
+        props.put("mail.smtp.connectiontimeout", "8000");
+        props.put("mail.smtp.timeout", "8000");
+        props.put("mail.smtp.writetimeout", "8000");
+        props.put("mail.debug", "false");
 
         log.info("JavaMailSender initialized for host: {}, port: {}, user: {}", host, port, effectiveUser);
         return mailSender;

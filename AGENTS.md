@@ -3,6 +3,22 @@
 ## Overview
 This document describes the AI agents and their roles in the Horizon API project.
 
+**REGRAS ESTRITAS (OBRIGATÓRIO):**
+- NUNCA executar comandos `mvn`, `npm run build`, `ng build` ou qualquer comando de build/teste em nada que o usuário mandar.
+- Se não encontrar um arquivo na primeira tentativa direta, avise imediatamente o usuário sem gastar tokens procurando indefinidamente.
+- **CORES PADRÃO HORIZON (ESTRITO):**
+  - Azul padrão Horizon: `#5BA4D8`
+  - Verde padrão Horizon: `#65A30D`
+- **DESIGN (ESTRITO):**
+  - O usuário ODEIA design com pill / badges tipo cápsula (`rounded-pill`). NUNCA usar formato pill.
+  - O usuário ODEIA linhas divisórias horizontais (**dividers** / `border-top` / `border-bottom` / `<hr>`). NUNCA usar essas linhas de separação em lugar nenhum.
+  - O usuário ODEIA design com setas (`→`, `bi-arrow-right`, setas em botões como "prosseguir para reserva", etc.). NUNCA usar setas em botões e ações.
+- **BRANDING (ESTRITO):**
+  - NÃO EXISTE "Horizon Travel". A marca e o nome são estritamente **Horizon**. Em cartões, PDFs, cabeçalhos, títulos e textos, usar apenas **Horizon**.
+  - As classes de voo são estritamente: **Básico**, **Executivo** e **Premium**. NUNCA usar "Horizon Comfort", "Economy", etc. No cartão de embarque, deve refletir a classe que o usuário realmente escolheu.
+
+projeto de exemplo: C:\Users\Gabri\Projetos\legato\Legato-Backend> 
+
 ## Project Architecture
 This project follows **Hexagonal Architecture** (Ports and Adapters pattern) to ensure separation of concerns and maintainability.
 

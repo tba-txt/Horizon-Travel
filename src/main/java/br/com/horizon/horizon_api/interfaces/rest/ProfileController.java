@@ -28,4 +28,11 @@ public class ProfileController {
     public ResponseEntity<ProfileResponseDTO> getBehavioral() {
         return ResponseEntity.ok(service.executeBehavior(SecurityUtils.getAuthenticatedUserId()));
     }
+
+    @Operation(summary = "Zerar algoritmo do usuário", description = "Remove todas as interações do feed, respostas do quiz e atributos do perfil, restaurando o algoritmo para o estado inicial.")
+    @DeleteMapping("/reset")
+    public ResponseEntity<Void> resetAlgorithm() {
+        service.resetAlgorithm(SecurityUtils.getAuthenticatedUserId());
+        return ResponseEntity.noContent().build();
+    }
 }

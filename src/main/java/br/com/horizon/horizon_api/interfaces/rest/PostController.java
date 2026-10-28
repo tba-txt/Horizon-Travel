@@ -18,14 +18,20 @@ public class PostController {
     @GetMapping("/{id}")
     public ResponseEntity<PostResponseDTO> getById(@PathVariable Long id) {
         log.info("Recebida requisição GET /posts/{}", id);
-        return ResponseEntity.ok(service.execute(id));
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                .body(service.execute(id));
     }
     
     @GetMapping
     public ResponseEntity<List<PostResponseDTO>> listPublished(@RequestParam(defaultValue = "0") Integer page, @RequestParam(defaultValue = "100") Integer size) {
-        log.info("Recebida requisição GET /posts");
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        Object principal = (auth != null) ? auth.getPrincipal() : "anonymous";
+        log.info("Recebida requisição GET /posts para principal={}", principal);
         List<PostResponseDTO> result = service.execute(page, size);
-        log.info("Retornando {} posts", result.size());
-        return ResponseEntity.ok(result);
+        log.info("Retornando {} posts para principal={}", result.size(), principal);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate")
+                .body(result);
     }
 }

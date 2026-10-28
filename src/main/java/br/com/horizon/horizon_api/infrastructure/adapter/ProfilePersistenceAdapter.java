@@ -73,13 +73,21 @@ public class ProfilePersistenceAdapter implements UserProfileAttributePersistenc
     
     @Override
     public void save(BehaviorProfileAttribute bpa) {
-        BehaviorProfileAttributeEntity e = new BehaviorProfileAttributeEntity();
-        e.setId(bpa.getId());
-        UserEntity u = new UserEntity(); u.setId(bpa.getUserId()); e.setUser(u);
-        AttributeEntity attr = new AttributeEntity(); attr.setId(bpa.getAttributeId()); e.setAttribute(attr);
+        BehaviorProfileAttributeEntity e = null;
+        if (bpa.getId() != null) {
+            e = behaviorRepo.findById(bpa.getId()).orElse(null);
+        }
+        if (e == null && bpa.getUserId() != null && bpa.getAttributeId() != null) {
+            e = behaviorRepo.findByUser_IdAndAttribute_Id(bpa.getUserId(), bpa.getAttributeId()).orElse(null);
+        }
+        if (e == null) {
+            e = new BehaviorProfileAttributeEntity();
+            UserEntity u = new UserEntity(); u.setId(bpa.getUserId()); e.setUser(u);
+            AttributeEntity attr = new AttributeEntity(); attr.setId(bpa.getAttributeId()); e.setAttribute(attr);
+        }
         e.setScore(bpa.getScore());
         e.setUpdatedAt(bpa.getUpdatedAt());
-        behaviorRepo.save(e);
+        behaviorRepo.saveAndFlush(e);
     }
     
     @Override

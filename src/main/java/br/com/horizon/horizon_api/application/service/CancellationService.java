@@ -85,15 +85,13 @@ public class CancellationService implements CancelReservationUseCase {
                             ? "O prazo de 24 horas para o pagamento da sua reserva expirou e ela foi cancelada automaticamente."
                             : "Sua reserva para " + destName + " foi cancelada com sucesso.";
 
-                    String body = "<div style=\"font-family: Arial, sans-serif; color: #333; line-height: 1.6;\">"
-                            + "<h2 style=\"color: #4895CC;\">Horizon Travel</h2>"
-                            + "<p>Olá, <strong>" + user.getName() + "</strong>!</p>"
-                            + "<p>Informamos que a sua reserva <strong>#" + reservation.getId() + "</strong> para <strong>" + destName + "</strong> foi cancelada.</p>"
-                            + "<p>" + motivo + "</p>"
-                            + "<p>Se você deseja realizar uma nova reserva ou tiver dúvidas, acesse nossa plataforma.</p>"
-                            + "<br/>"
-                            + "<p>Atenciosamente,<br/><strong>Equipe Horizon</strong></p>"
-                            + "</div>";
+                    String body = EmailTemplateService.buildReservationCancellationEmail(
+                            user.getName(),
+                            reservation.getId(),
+                            destName,
+                            motivo,
+                            "http://localhost:4200/destinations"
+                    );
 
                     emailPort.sendEmail(user.getEmail(), subject, body);
                     log.info("Cancellation email sent successfully to {} for Reservation ID: {}", user.getEmail(), reservation.getId());

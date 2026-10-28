@@ -22,6 +22,9 @@ public class UserProfileEntity {
     @Column(name = "budget_per_person", precision = 10, scale = 2)
     private BigDecimal budgetPerPerson;
 
+    @Column(name = "has_passport")
+    private Boolean hasPassport = true;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

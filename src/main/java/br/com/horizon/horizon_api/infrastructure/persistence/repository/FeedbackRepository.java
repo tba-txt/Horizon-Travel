@@ -24,5 +24,8 @@ public interface FeedbackRepository extends JpaRepository<FeedbackEntity, Long> 
             br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.TargetType targetType);
 
     List<FeedbackEntity> findByAnsweredAtAfter(OffsetDateTime date);
+
+    @org.springframework.data.jpa.repository.Query("SELECT f FROM FeedbackEntity f WHERE f.answeredAt IS NULL OR f.answeredAt >= :date ORDER BY f.id DESC")
+    List<FeedbackEntity> findRecentFeedbacks(@org.springframework.data.repository.query.Param("date") OffsetDateTime date);
 }
 

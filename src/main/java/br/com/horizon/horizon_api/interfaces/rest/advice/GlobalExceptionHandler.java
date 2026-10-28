@@ -72,6 +72,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, "Formato de requisição inválido. Verifique os dados enviados.");
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotWritableException.class)
+    public void handleNotWritable(org.springframework.http.converter.HttpMessageNotWritableException ex) {
+        Throwable root = org.springframework.core.NestedExceptionUtils.getMostSpecificCause(ex);
+        if (root instanceof java.io.IOException && (root.getMessage() != null && (root.getMessage().contains("anulada") || root.getMessage().contains("Broken pipe")))) {
+            log.debug("Conexão com o cliente foi cancelada/anulada antes do término do envio: {}", root.getMessage());
+            return;
+        }
+        log.warn("Falha ao serializar resposta HTTP: {}", ex.getMessage());
+    }
+
     @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, String>> handleMaxUploadSize(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
         log.warn("Arquivo enviado excede o limite de upload permitido: {}", ex.getMessage());

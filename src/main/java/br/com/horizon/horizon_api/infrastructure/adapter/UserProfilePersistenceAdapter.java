@@ -24,6 +24,7 @@ public class UserProfilePersistenceAdapter implements UserProfilePersistencePort
             p.setId(e.getId());
             p.setUserId(e.getUser().getId());
             p.setBudgetPerPerson(e.getBudgetPerPerson());
+            p.setHasPassport(e.getHasPassport() != null ? e.getHasPassport() : true);
             p.setCreatedAt(e.getCreatedAt());
             p.setUpdatedAt(e.getUpdatedAt());
             return p;
@@ -42,6 +43,7 @@ public class UserProfilePersistenceAdapter implements UserProfilePersistencePort
         UserEntity user = userRepo.findById(profile.getUserId()).orElseThrow();
         e.setUser(user);
         e.setBudgetPerPerson(profile.getBudgetPerPerson());
+        e.setHasPassport(profile.getHasPassport() != null ? profile.getHasPassport() : true);
         e.setCreatedAt(profile.getCreatedAt());
         e.setUpdatedAt(profile.getUpdatedAt());
         

@@ -28,6 +28,8 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         Map<String, BigDecimal> explicitMap = new HashMap<>();
         UserProfile profile = userProfilePort.findByUserId(userId).orElse(null);
         BigDecimal budget = profile != null ? profile.getBudgetPerPerson() : null;
+        Boolean hasPassport = profile != null && profile.getHasPassport() != null ? profile.getHasPassport() : true;
+
         for (UserProfileAttribute e : explicit) {
             if (e.getAttributeName() != null) {
                 explicitMap.put(e.getAttributeName().toLowerCase(), e.getScore());
@@ -45,6 +47,11 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         List<RecommendationResult> results = new ArrayList<>();
         
         for (Destination dest : destinations) {
+            // Document / Passport eligibility constraint for Brazilian travelers
+            if (Boolean.FALSE.equals(hasPassport) && Boolean.TRUE.equals(dest.getRequiresPassport())) {
+                continue;
+            }
+
             BigDecimal explicitScore = calculateCompatibility(dest.getAttributes(), explicitMap);
             BigDecimal behaviorScore = calculateCompatibility(dest.getAttributes(), behaviorMap);
             
@@ -57,7 +64,7 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             BigDecimal baseScore = explicitScore.multiply(new BigDecimal("0.6")).add(behaviorScore.multiply(new BigDecimal("0.4")));
             
             BigDecimal budgetFactor = BigDecimal.ONE;
-            if (budget != null && dest.getBasePrice() != null) {
+            if (budget != null && budget.compareTo(BigDecimal.ZERO) > 0 && dest.getBasePrice() != null) {
                 if (dest.getBasePrice().compareTo(budget) > 0) {
                     BigDecimal excess = dest.getBasePrice().subtract(budget);
                     BigDecimal ratio = excess.divide(budget, 4, RoundingMode.HALF_UP);
@@ -76,7 +83,7 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             r.destination = dest;
             r.explicitScore = explicitScore;
             r.finalScore = finalScore;
-            r.explanation = generateExplanation(dest, explicitMap, behaviorMap, budgetFactor, budget, coldExplicit && coldBehavior);
+            r.explanation = generateExplanation(dest, explicitMap, behaviorMap, budgetFactor, budget, coldExplicit && coldBehavior, hasPassport);
             results.add(r);
         }
         
@@ -115,6 +122,7 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
             dto.setImageUrl(r.destination.getImageUrl());
             dto.setBasePrice(r.destination.getBasePrice());
             dto.setScore(r.finalScore);
+            dto.setRequiresPassport(r.destination.getRequiresPassport());
             
             // Only explain the top 3
             if (i < 3) {
@@ -147,7 +155,7 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         return sum.divide(new BigDecimal(destAttrs.size()), 4, RoundingMode.HALF_UP);
     }
     
-    private String generateExplanation(Destination dest, Map<String, BigDecimal> explicitMap, Map<String, BigDecimal> behaviorMap, BigDecimal budgetFactor, BigDecimal budget, boolean isColdStart) {
+    private String generateExplanation(Destination dest, Map<String, BigDecimal> explicitMap, Map<String, BigDecimal> behaviorMap, BigDecimal budgetFactor, BigDecimal budget, boolean isColdStart, Boolean hasPassport) {
         if (isColdStart) {
             return "Recomendado como um destino popular e excelente ponto de partida.";
         }
@@ -192,9 +200,13 @@ public class RecommendationEngine implements GetRecommendationsUseCase {
         }
         exp += ".";
         
+        if (Boolean.FALSE.equals(hasPassport) && Boolean.FALSE.equals(dest.getRequiresPassport())) {
+            exp += " Acessível apenas com seu RG!";
+        }
+        
         if (budget != null) {
             if (budgetFactor.compareTo(BigDecimal.ONE) == 0) {
-                // exp += " E por estar dentro do seu orçamento."; // keep it cleaner without budget mentions if 100% matched
+                // Dentro do orçamento
             } else if (budgetFactor.compareTo(new BigDecimal("0.8")) >= 0) {
                 exp += " Apesar de estar um pouco acima do orçamento.";
             } else {

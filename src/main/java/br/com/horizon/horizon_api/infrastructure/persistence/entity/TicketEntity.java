@@ -7,7 +7,10 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "tickets")
+@Table(name = "tickets", indexes = {
+    @Index(name = "idx_ticket_reservation", columnList = "reservation_id"),
+    @Index(name = "idx_ticket_number", columnList = "ticket_number")
+})
 @Getter
 @Setter
 public class TicketEntity {

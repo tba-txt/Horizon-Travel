@@ -47,13 +47,24 @@ public class WeeklyFeedbackBatchConfig {
     public Tasklet weeklyFeedbackTasklet() {
         return (contribution, chunkContext) -> {
             OffsetDateTime threeDaysAgo = OffsetDateTime.now().minusDays(3);
-            List<FeedbackEntity> recentFeedbacks = feedbackRepository.findByAnsweredAtAfter(threeDaysAgo);
+            List<FeedbackEntity> recentFeedbacks = feedbackRepository.findRecentFeedbacks(threeDaysAgo);
 
             String subject = "Horizon - Síntese de Avaliações (NPS e CSAT - Últimos 3 Dias)";
 
+            String nowStr = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
             if (recentFeedbacks == null || recentFeedbacks.isEmpty()) {
-                log.info("[Spring Batch NPS/CSAT] Nenhuma avaliação registrada nos últimos 3 dias. Enviando síntese vazia para {}.", feedbackReportEmail);
-                emailPort.sendEmail(feedbackReportEmail, subject, "Nenhuma avaliação registrada nos últimos 3 dias.");
+                log.info("[Spring Batch NPS/CSAT] Nenhuma avaliação registrada nos últimos 3 dias. Enviando síntese vazia com layout Horizon para {}.", feedbackReportEmail);
+                String emptyReportHtml = br.com.horizon.horizon_api.application.service.EmailTemplateService.buildWeeklyFeedbackReportEmail(
+                        "Período: Últimos 3 dias (Emitido em " + nowStr + ")",
+                        0,
+                        0, 0.0, 0, 0, 0,
+                        0, 0.0, 0.0,
+                        0, 0.0, 0, 0.0,
+                        0, 0.0, 0, 0.0,
+                        java.util.List.of()
+                );
+                emailPort.sendEmail(feedbackReportEmail, subject, emptyReportHtml);
                 return RepeatStatus.FINISHED;
             }
 
@@ -69,7 +80,7 @@ public class WeeklyFeedbackBatchConfig {
             long tripCsatTotal = 0;
             double tripCsatSum = 0;
 
-            StringBuilder commentsSection = new StringBuilder();
+            List<String> commentsList = new java.util.ArrayList<>();
 
             for (FeedbackEntity f : recentFeedbacks) {
                 if (f.getScore() == null) continue;
@@ -107,13 +118,22 @@ public class WeeklyFeedbackBatchConfig {
                 if (f.getComment() != null && !f.getComment().isBlank()) {
                     String canal = f.getTargetType() == TargetType.TRIP ? "Viagem" : "Plataforma";
                     String tipo = f.getFeedbackType() == FeedbackType.NPS ? "NPS " + score + "/10" : "CSAT " + score + "/5";
-                    commentsSection.append(String.format("• [%s - %s]: \"%s\"\n", canal, tipo, f.getComment().trim()));
+                    commentsList.add(String.format("[%s - %s]: \"%s\"", canal, tipo, f.getComment().trim()));
                 }
             }
 
             long totalCount = npsTotal + csatTotal;
             if (totalCount == 0) {
-                emailPort.sendEmail(feedbackReportEmail, subject, "Nenhuma avaliação válida registrada nos últimos 3 dias.");
+                String emptyReportHtml = br.com.horizon.horizon_api.application.service.EmailTemplateService.buildWeeklyFeedbackReportEmail(
+                        "Período: Últimos 3 dias (Emitido em " + nowStr + ")",
+                        0,
+                        0, 0.0, 0, 0, 0,
+                        0, 0.0, 0.0,
+                        0, 0.0, 0, 0.0,
+                        0, 0.0, 0, 0.0,
+                        java.util.List.of()
+                );
+                emailPort.sendEmail(feedbackReportEmail, subject, emptyReportHtml);
                 return RepeatStatus.FINISHED;
             }
 
@@ -121,66 +141,22 @@ public class WeeklyFeedbackBatchConfig {
             double csatMediaGeral = csatTotal > 0 ? csatSum / csatTotal : 0.0;
             double csatPctGeral = csatTotal > 0 ? (csatSatisfied * 100.0) / csatTotal : 0.0;
 
-            String nowStr = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            double platNpsScore = platNpsTotal > 0 ? ((platNpsPromoters - platNpsDetractors) * 100.0) / platNpsTotal : 0.0;
+            double platCsatMedia = platCsatTotal > 0 ? platCsatSum / platCsatTotal : 0.0;
+            double tripNpsScore = tripNpsTotal > 0 ? ((tripNpsPromoters - tripNpsDetractors) * 100.0) / tripNpsTotal : 0.0;
+            double tripCsatMedia = tripCsatTotal > 0 ? tripCsatSum / tripCsatTotal : 0.0;
 
-            StringBuilder report = new StringBuilder();
-            report.append("Horizon - Síntese de Avaliações (NPS e CSAT)\n");
-            report.append("Período: Últimos 3 dias (Emitido em ").append(nowStr).append(")\n\n");
+            String htmlReport = br.com.horizon.horizon_api.application.service.EmailTemplateService.buildWeeklyFeedbackReportEmail(
+                    "Período: Últimos 3 dias (Emitido em " + nowStr + ")",
+                    totalCount,
+                    npsTotal, npsGeral, npsPromoters, npsPassives, npsDetractors,
+                    csatTotal, csatMediaGeral, csatPctGeral,
+                    platCsatTotal, platCsatMedia, platNpsTotal, platNpsScore,
+                    tripCsatTotal, tripCsatMedia, tripNpsTotal, tripNpsScore,
+                    commentsList
+            );
 
-            report.append("==================================================\n");
-            report.append("RESUMO GERAL CONSOLIDADO\n");
-            report.append("==================================================\n");
-            report.append(String.format("Total de Respostas Captadas: %d\n", totalCount));
-            if (npsTotal > 0) {
-                report.append(String.format("• NPS Consolidado: %+.1f%% (Promotores: %d | Neutros: %d | Detratores: %d)\n",
-                        npsGeral, npsPromoters, npsPassives, npsDetractors));
-            }
-            if (csatTotal > 0) {
-                report.append(String.format("• CSAT (Satisfação 1 a 5): Média %.2f / 5.00 (%.1f%% satisfeitos)\n",
-                        csatMediaGeral, csatPctGeral));
-            }
-            report.append("\n");
-
-            report.append("==================================================\n");
-            report.append("DETALHAMENTO POR CANAL\n");
-            report.append("==================================================\n");
-
-            report.append("[PLATAFORMA HORIZON]\n");
-            if (platNpsTotal > 0 || platCsatTotal > 0) {
-                if (platCsatTotal > 0) {
-                    report.append(String.format("- Satisfação (CSAT): Média %.2f / 5.00 (%d respostas)\n", platCsatSum / platCsatTotal, platCsatTotal));
-                }
-                if (platNpsTotal > 0) {
-                    double platNps = ((platNpsPromoters - platNpsDetractors) * 100.0) / platNpsTotal;
-                    report.append(String.format("- Recomendação (NPS): %+.1f%% (%d respostas)\n", platNps, platNpsTotal));
-                }
-                report.append("\n");
-            } else {
-                report.append("- Nenhuma avaliação de plataforma no período.\n\n");
-            }
-
-            report.append("[VIAGENS REALIZADAS]\n");
-            if (tripNpsTotal > 0 || tripCsatTotal > 0) {
-                if (tripCsatTotal > 0) {
-                    report.append(String.format("- Satisfação (CSAT): Média %.2f / 5.00 (%d respostas)\n", tripCsatSum / tripCsatTotal, tripCsatTotal));
-                }
-                if (tripNpsTotal > 0) {
-                    double tripNps = ((tripNpsPromoters - tripNpsDetractors) * 100.0) / tripNpsTotal;
-                    report.append(String.format("- Recomendação (NPS): %+.1f%% (%d respostas)\n", tripNps, tripNpsTotal));
-                }
-                report.append("\n");
-            } else {
-                report.append("- Nenhuma avaliação de viagens no período.\n\n");
-            }
-
-            if (commentsSection.length() > 0) {
-                report.append("==================================================\n");
-                report.append("COMENTÁRIOS DOS VIAJANTES\n");
-                report.append("==================================================\n");
-                report.append(commentsSection);
-            }
-
-            emailPort.sendEmail(feedbackReportEmail, subject, report.toString());
+            emailPort.sendEmail(feedbackReportEmail, subject, htmlReport);
             log.info("[Spring Batch NPS/CSAT] Síntese de 3 dias enviada com sucesso para {}", feedbackReportEmail);
 
             return RepeatStatus.FINISHED;

@@ -11,6 +11,7 @@ public interface TicketPersistencePort {
     Optional<Ticket> findById(Long id);
     Optional<Ticket> findByPassengerId(Long passengerId);
     List<Ticket> findByReservationId(Long reservationId);
+    List<Ticket> findByReservationIdIn(List<Long> reservationIds);
     boolean existsByPassengerId(Long passengerId);
     void delete(Long id);
     java.util.Optional<Ticket> findByTicketNumber(String ticketNumber);

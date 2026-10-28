@@ -1,6 +1,8 @@
 package br.com.horizon.horizon_api.application.usecase;
 
 import br.com.horizon.horizon_api.application.dto.request.ResetPasswordRequest;
+import br.com.horizon.horizon_api.application.service.EmailTemplateService;
+import br.com.horizon.horizon_api.domain.port.EmailPort;
 import br.com.horizon.horizon_api.infrastructure.persistence.entity.PasswordResetTokenEntity;
 import br.com.horizon.horizon_api.infrastructure.persistence.entity.UserEntity;
 import br.com.horizon.horizon_api.infrastructure.persistence.repository.PasswordResetTokenRepository;
@@ -9,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.OffsetDateTime;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class ResetPasswordUseCase {
     private final PasswordResetTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailPort emailPort;
 
     @Transactional
     public void execute(ResetPasswordRequest request) {
@@ -43,5 +48,16 @@ public class ResetPasswordUseCase {
 
         tokenEntity.setUsed(true);
         tokenRepository.save(tokenEntity);
+
+        // Disparo assíncrono do e-mail de confirmação de senha alterada
+        String userEmail = user.getEmail();
+        String htmlBody = EmailTemplateService.buildPasswordChangedConfirmationEmail(user.getSocialName(), user.getName());
+        CompletableFuture.runAsync(() -> {
+            try {
+                emailPort.sendEmail(userEmail, "Horizon - Senha alterada com sucesso", htmlBody);
+            } catch (Exception ex) {
+                // Silently ignore to avoid failing client response
+            }
+        });
     }
 }

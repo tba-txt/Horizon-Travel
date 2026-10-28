@@ -23,6 +23,7 @@ public class PaymentService implements ConfirmPaymentUseCase {
     private final GenerateTicketsUseCase generateTicketsUseCase;
     private final br.com.horizon.horizon_api.domain.port.EmailPort emailPort;
     private final br.com.horizon.horizon_api.infrastructure.persistence.repository.UserRepository userRepository;
+    private final br.com.horizon.horizon_api.domain.port.DestinationPersistencePort destinationPort;
 
     @Override
     @Transactional
@@ -55,13 +56,22 @@ public class PaymentService implements ConfirmPaymentUseCase {
 
         try {
             br.com.horizon.horizon_api.infrastructure.persistence.entity.UserEntity user = userRepository.findById(userId).orElseThrow();
-            String subject = "Horizon - Pagamento Confirmado";
-            String body = "Ola " + user.getName() + ",\n\n" +
-                    "Seu pagamento para a reserva #" + saved.getId() + " foi confirmado com sucesso!\n" +
-                    "Seus bilhetes ja estao disponiveis no aplicativo.\n\n" +
-                    "Obrigado por escolher a Horizon!\n" +
-                    "Boa viagem!";
-            emailPort.sendEmail(user.getEmail(), subject, body);
+            String destName = "seu destino";
+            if (saved.getDestinationId() != null && destinationPort != null) {
+                destName = destinationPort.findById(saved.getDestinationId())
+                        .map(br.com.horizon.horizon_api.domain.model.Destination::getName)
+                        .orElse("seu destino");
+            }
+            String methodName = (method != null) ? method.name() : "Confirmado";
+            String subject = "Horizon - Pagamento Confirmado (Reserva #" + saved.getId() + ")";
+            String htmlBody = EmailTemplateService.buildPaymentConfirmationEmail(
+                    user.getName(),
+                    saved.getId(),
+                    destName,
+                    methodName,
+                    "http://localhost:4200/profile"
+            );
+            emailPort.sendEmail(user.getEmail(), subject, htmlBody);
         } catch (Exception e) {
             log.error("Failed to send payment confirmation email for Reservation ID: {}", saved.getId(), e);
         }

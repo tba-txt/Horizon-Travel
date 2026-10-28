@@ -47,12 +47,10 @@ public class FeedbackService implements RegisterFeedbackUseCase {
                 flightToCheck = flightPort.getFlightById(res.getReturnFlightId()).orElseThrow();
             }
 
-            java.time.LocalDate today = java.time.LocalDate.now();
-            java.time.LocalDate arrivalDate = flightToCheck.getFlightDate();
-            boolean notYetCompleted = today.isBefore(arrivalDate) ||
-                    (today.isEqual(arrivalDate) && flightToCheck.getArrivalTime() != null && java.time.LocalTime.now().isBefore(flightToCheck.getArrivalTime()));
-            if (notYetCompleted) {
-                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("A avaliação só estará disponível após a conclusão da viagem.");
+            // Permitir avaliação para reservas CONFIRMADAS ou CONCLUIDAS
+            if (res.getStatus() != br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.ReservationStatus.CONFIRMADA &&
+                res.getStatus() != br.com.horizon.horizon_api.infrastructure.persistence.entity.enums.ReservationStatus.CONCLUIDA) {
+                throw new br.com.horizon.horizon_api.domain.exception.BusinessException("Apenas reservas confirmadas ou concluídas podem ser avaliadas.");
             }
         }
 

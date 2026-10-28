@@ -12,8 +12,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @OpenAPIDefinition(
         info = @Info(
-                title = "Horizon Travel API",
-                description = "API RESTful da plataforma Horizon Travel.",
+                title = "Horizon API",
+                description = "API RESTful da plataforma Horizon.",
                 version = "1.0"
         ),
         servers = {

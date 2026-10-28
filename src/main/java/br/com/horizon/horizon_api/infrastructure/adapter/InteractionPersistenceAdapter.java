@@ -34,14 +34,22 @@ public class InteractionPersistenceAdapter implements InteractionPersistencePort
     
     @Override
     public Interaction save(Interaction i) {
-        InteractionEntity e = new InteractionEntity();
-        e.setId(i.getId());
-        UserEntity u = new UserEntity(); u.setId(i.getUserId()); e.setUser(u);
-        PostEntity p = new PostEntity(); p.setId(i.getPostId()); e.setPost(p);
+        InteractionEntity e = null;
+        if (i.getId() != null) {
+            e = repo.findById(i.getId()).orElse(null);
+        }
+        if (e == null && i.getUserId() != null && i.getPostId() != null) {
+            e = repo.findByUser_IdAndPost_Id(i.getUserId(), i.getPostId()).orElse(null);
+        }
+        if (e == null) {
+            e = new InteractionEntity();
+            UserEntity u = new UserEntity(); u.setId(i.getUserId()); e.setUser(u);
+            PostEntity p = new PostEntity(); p.setId(i.getPostId()); e.setPost(p);
+        }
         e.setOptionId(i.getOptionId());
         e.setInteractionType(i.getInteractionType());
-        e.setCreatedAt(i.getCreatedAt());
-        return map(repo.save(e));
+        e.setCreatedAt(i.getCreatedAt() != null ? i.getCreatedAt() : java.time.OffsetDateTime.now());
+        return map(repo.saveAndFlush(e));
     }
     
     @Override
@@ -57,5 +65,6 @@ public class InteractionPersistenceAdapter implements InteractionPersistencePort
     @Override
     public void delete(Long interactionId) {
         repo.deleteById(interactionId);
+        repo.flush();
     }
 }

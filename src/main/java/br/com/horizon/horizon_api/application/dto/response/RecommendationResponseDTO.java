@@ -1,8 +1,11 @@
 package br.com.horizon.horizon_api.application.dto.response;
+
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
-@Getter @Setter
+
+@Getter
+@Setter
 public class RecommendationResponseDTO {
     private Long destinationId;
     private String destinationName;
@@ -13,4 +16,5 @@ public class RecommendationResponseDTO {
     private BigDecimal basePrice;
     private BigDecimal score;
     private String explanation;
+    private Boolean requiresPassport;
 }

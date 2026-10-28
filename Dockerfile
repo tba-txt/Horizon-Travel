@@ -14,6 +14,8 @@ RUN ./mvnw clean package -DskipTests
 # Run stage
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
 COPY --from=build /app/target/horizon-api-*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

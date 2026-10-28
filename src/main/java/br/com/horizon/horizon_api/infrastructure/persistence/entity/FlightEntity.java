@@ -41,6 +41,9 @@ public class FlightEntity {
     @Column(name = "arrival_time")
     private LocalTime arrivalTime;
 
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
+
     @Column(name = "flight_number", length = 20)
     private String flightNumber;
 

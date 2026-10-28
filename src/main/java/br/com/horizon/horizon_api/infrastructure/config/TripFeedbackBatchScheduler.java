@@ -48,13 +48,15 @@ public class TripFeedbackBatchScheduler {
                 if (res.getUser() != null && res.getUser().getEmail() != null) {
                     String destinationName = res.getDestination() != null ? res.getDestination().getName() : "seu destino";
                     String subject = "Horizon - Avalie sua viagem para " + destinationName;
-                    String body = "Olá " + res.getUser().getName() + ",\n\n" +
-                            "Esperamos que sua viagem para " + destinationName + " tenha sido excelente!\n" +
-                            "A avaliação da sua viagem já está liberada no seu perfil da Horizon.\n\n" +
-                            "Acesse seu perfil em: http://localhost:4200/profile\n\n" +
-                            "Equipe Horizon";
+                    String feedbackLink = "http://localhost:4200/profile?openFeedback=trip&reservationId=" + res.getId();
+                    String htmlBody = br.com.horizon.horizon_api.application.service.EmailTemplateService.buildTripFeedbackInvitationEmail(
+                            res.getUser().getName(),
+                            res.getId(),
+                            destinationName,
+                            feedbackLink
+                    );
 
-                    emailPort.sendEmail(res.getUser().getEmail(), subject, body);
+                    emailPort.sendEmail(res.getUser().getEmail(), subject, htmlBody);
                 }
                 res.setFeedbackEmailSent(true);
                 reservationRepository.save(res);

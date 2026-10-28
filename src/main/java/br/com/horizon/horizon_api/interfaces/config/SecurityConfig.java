@@ -33,6 +33,7 @@ public class SecurityConfig {
 				.requestMatchers(org.springframework.http.HttpMethod.GET, "/flights", "/flights/**").permitAll()
 				.requestMatchers(org.springframework.http.HttpMethod.GET, "/posts", "/posts/**").permitAll()
 				.requestMatchers(org.springframework.http.HttpMethod.GET, "/quizzes", "/quizzes/**").permitAll()
+				.requestMatchers("/support-tickets", "/support-tickets/**").permitAll()
 				// Swagger / OpenAPI
 				.requestMatchers(
 					"/swagger-ui/**",

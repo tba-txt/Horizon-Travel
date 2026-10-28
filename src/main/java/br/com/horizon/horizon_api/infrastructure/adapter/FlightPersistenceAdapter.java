@@ -63,6 +63,7 @@ public class FlightPersistenceAdapter implements FlightPersistencePort {
         f.setFlightDate(entity.getFlightDate());
         f.setDepartureTime(entity.getDepartureTime());
         f.setArrivalTime(entity.getArrivalTime());
+        f.setDurationMinutes(entity.getDurationMinutes());
         f.setFlightNumber(entity.getFlightNumber());
         f.setPricePerPerson(entity.getPricePerPerson());
         f.setPriceExecutive(entity.getPriceExecutive());

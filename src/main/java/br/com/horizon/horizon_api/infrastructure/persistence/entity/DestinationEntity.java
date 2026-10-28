@@ -54,6 +54,9 @@ public class DestinationEntity {
     @Column(name = "active")
     private Boolean active;
 
+    @Column(name = "requires_passport")
+    private Boolean requiresPassport = true;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 }

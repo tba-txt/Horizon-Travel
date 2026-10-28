@@ -38,3 +38,16 @@ build/
 
 ### VS Code ###
 .vscode/
+### Scripts de teste, logs e arquivos com credenciais locais ###
+Check*.java
+Check*.class
+RunSql.java
+RunSql.class
+*.class
+*.py
+*.sql
+*.log
+*.txt
+script.js
+test.json
+=

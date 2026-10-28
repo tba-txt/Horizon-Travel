@@ -100,7 +100,7 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
             throw new IllegalArgumentException("A data de partida não pode exceder 24 meses.");
         }
 
-        BigDecimal totalPerPerson = outbound.getPricePerPerson();
+        BigDecimal totalPerPerson = getFlightPrice(outbound, request.getOutboundSeatClass());
         Flight returnFlight = null;
 
         if (request.getTripType() == TripType.ROUND_TRIP) {
@@ -117,7 +117,32 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
             if (returnFlight.getFlightDate().isBefore(outbound.getFlightDate())) {
                 throw new IllegalArgumentException("A data de volta não pode ser anterior à data de partida.");
             }
-            totalPerPerson = totalPerPerson.add(returnFlight.getPricePerPerson());
+
+            // Validação de intervalo mínimo entre ida e volta:
+            // Para países na América do Sul: pelo menos 1 dia de estadia (pode ir em um dia e voltar no seguinte).
+            // Para destinos internacionais fora da América do Sul (Europa, Ásia, América do Norte, etc.):
+            // devido ao longo tempo de voo e fuso horário, a volta deve ser pelo menos 3 dias após a ida.
+            var destinationOpt = destinationPort.findById(request.getDestinationId());
+            String country = destinationOpt.map(d -> d.getCountry() != null ? d.getCountry().toLowerCase() : "").orElse("");
+            boolean isSouthAmerica = country.contains("brasil") || country.contains("argentina") || 
+                                     country.contains("chile") || country.contains("peru") || 
+                                     country.contains("colômbia") || country.contains("colombia") || 
+                                     country.contains("equador") || country.contains("uruguai") || 
+                                     country.contains("paraguai") || country.contains("bolívia") || 
+                                     country.contains("bolivia");
+
+            long daysBetween = ChronoUnit.DAYS.between(outbound.getFlightDate(), returnFlight.getFlightDate());
+            if (isSouthAmerica) {
+                if (daysBetween < 1) {
+                    throw new IllegalArgumentException("Para voos na América do Sul, a data de volta deve ser no mínimo 1 dia após a data de partida.");
+                }
+            } else {
+                if (daysBetween < 3) {
+                    throw new IllegalArgumentException("Para voos internacionais fora da América do Sul, a data de volta deve ser no mínimo 3 dias após a partida devido ao tempo de voo e conexão.");
+                }
+            }
+
+            totalPerPerson = totalPerPerson.add(getFlightPrice(returnFlight, request.getReturnSeatClass()));
         }
 
         boolean outReserved = flightPort.reserveSeats(outbound.getId(), numPassengers);
@@ -163,7 +188,14 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         Reservation saved = reservationPort.save(reservation);
         log.info("Created new reservation ID: {} for User ID: {}", saved.getId(), userId);
 
-        return toDetailedResponse(saved);
+        ReservationResponse response = toDetailedResponse(saved);
+        if (response.getOutboundFlight() != null && request.getOutboundSeatClass() != null) {
+            response.getOutboundFlight().setSeatClass(request.getOutboundSeatClass());
+        }
+        if (response.getReturnFlight() != null && request.getReturnSeatClass() != null) {
+            response.getReturnFlight().setSeatClass(request.getReturnSeatClass());
+        }
+        return response;
     }
 
     @Override
@@ -188,7 +220,31 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         List<Reservation> userReservations = reservationPort.findByUserId(userId);
         MyTripsResponse myTrips = new MyTripsResponse();
 
+        if (userReservations == null || userReservations.isEmpty()) {
+            return myTrips;
+        }
+
+        // Batch fetch tickets for reservations that may have them (CONFIRMADA / CONCLUIDA)
+        List<Long> paidReservationIds = userReservations.stream()
+                .filter(r -> r.getStatus() == ReservationStatus.CONFIRMADA || r.getStatus() == ReservationStatus.CONCLUIDA)
+                .map(Reservation::getId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        java.util.Map<Long, List<Ticket>> ticketsByReservation = new java.util.HashMap<>();
+        if (ticketPort != null && !paidReservationIds.isEmpty()) {
+            List<Ticket> allTickets = ticketPort.findByReservationIdIn(paidReservationIds);
+            if (allTickets != null) {
+                ticketsByReservation = allTickets.stream()
+                        .filter(t -> t.getReservationId() != null)
+                        .collect(Collectors.groupingBy(Ticket::getReservationId));
+            }
+        }
+
         for (Reservation res : userReservations) {
+            if (ticketsByReservation.containsKey(res.getId())) {
+                res.setTickets(ticketsByReservation.get(res.getId()));
+            }
             ReservationResponse resp = toDetailedResponse(res);
             if (res.getStatus() == ReservationStatus.PENDENTE) {
                 myTrips.getPending().add(resp);
@@ -209,7 +265,10 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         resp.setReservationId(res.getId());
         resp.setDestinationId(res.getDestinationId());
 
-        if (destinationPort != null && res.getDestinationId() != null) {
+        // Destination name: use pre-fetched name or fallback to query
+        if (res.getDestinationName() != null && !res.getDestinationName().isBlank()) {
+            resp.setDestinationName(res.getDestinationName());
+        } else if (destinationPort != null && res.getDestinationId() != null) {
             destinationPort.findById(res.getDestinationId()).ifPresent(d -> resp.setDestinationName(d.getName()));
         }
 
@@ -222,18 +281,29 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         resp.setCreatedAt(res.getCreatedAt());
         resp.setCancelledAt(res.getCancelledAt());
 
-        // Outbound Flight details
-        if (res.getOutboundFlightId() != null) {
-            flightPort.getFlightById(res.getOutboundFlightId()).ifPresent(f -> {
-                resp.setOutboundFlight(mapFlight(f));
-            });
+        // Outbound Flight details: use pre-fetched flight or fallback to query
+        Flight outboundFlight = res.getOutboundFlight();
+        if (outboundFlight == null && res.getOutboundFlightId() != null && flightPort != null) {
+            outboundFlight = flightPort.getFlightById(res.getOutboundFlightId()).orElse(null);
+        }
+        if (outboundFlight != null) {
+            FlightResponse fr = mapFlight(outboundFlight);
+            if (res.getNumberOfPassengers() != null && res.getNumberOfPassengers() > 0 && res.getTotalAmount() != null) {
+                if (res.getTripType() == TripType.ONE_WAY) {
+                    BigDecimal perPerson = res.getTotalAmount().divide(BigDecimal.valueOf(res.getNumberOfPassengers()), 2, java.math.RoundingMode.HALF_UP);
+                    fr.setSeatClass(deduceSeatClass(outboundFlight, perPerson));
+                }
+            }
+            resp.setOutboundFlight(fr);
         }
 
-        // Return Flight details
-        if (res.getReturnFlightId() != null) {
-            flightPort.getFlightById(res.getReturnFlightId()).ifPresent(f -> {
-                resp.setReturnFlight(mapFlight(f));
-            });
+        // Return Flight details: use pre-fetched flight or fallback to query
+        Flight returnFlight = res.getReturnFlight();
+        if (returnFlight == null && res.getReturnFlightId() != null && flightPort != null) {
+            returnFlight = flightPort.getFlightById(res.getReturnFlightId()).orElse(null);
+        }
+        if (returnFlight != null) {
+            resp.setReturnFlight(mapFlight(returnFlight));
         }
 
         // Passengers
@@ -250,6 +320,9 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         // Tickets (when they exist)
         if (res.getStatus() == ReservationStatus.PENDENTE) {
             resp.setTickets(null); // tickets are only generated after payment
+        } else if (res.getTickets() != null) {
+            // Already pre-fetched in batch!
+            resp.setTickets(res.getTickets().stream().map(ticketMapper::toResponse).collect(Collectors.toList()));
         } else if (ticketPort != null && res.getId() != null) {
             List<Ticket> tickets = ticketPort.findByReservationId(res.getId());
             if (tickets != null && !tickets.isEmpty()) {
@@ -275,5 +348,28 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
         fr.setPricePremium(f.getPricePremium());
         return fr;
     }
-}
+private BigDecimal getFlightPrice(Flight flight, String seatClass) {
+        if (flight == null) return BigDecimal.ZERO;
+        if (seatClass != null) {
+            String normalized = seatClass.trim().toUpperCase();
+            if ("EXECUTIVE".equals(normalized) && flight.getPriceExecutive() != null) {
+                return flight.getPriceExecutive();
+            }
+            if ("PREMIUM".equals(normalized) && flight.getPricePremium() != null) {
+                return flight.getPricePremium();
+            }
+        }
+        return flight.getPricePerPerson() != null ? flight.getPricePerPerson() : BigDecimal.ZERO;
+    }
 
+    private String deduceSeatClass(Flight f, BigDecimal legPrice) {
+        if (f == null || legPrice == null) return "BASIC";
+        if (f.getPricePremium() != null && f.getPricePremium().compareTo(legPrice) == 0) {
+            return "PREMIUM";
+        }
+        if (f.getPriceExecutive() != null && f.getPriceExecutive().compareTo(legPrice) == 0) {
+            return "EXECUTIVE";
+        }
+        return "BASIC";
+    }
+}

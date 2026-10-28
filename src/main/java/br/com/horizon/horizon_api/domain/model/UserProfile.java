@@ -11,6 +11,7 @@ public class UserProfile {
     private Long id;
     private Long userId;
     private BigDecimal budgetPerPerson;
+    private Boolean hasPassport;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +41,9 @@ public class InteractionService implements RegisterInteractionUseCase {
 
         userPort.findById(userId).orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado."));
         postPort.findById(req.getPostId()).orElseThrow(() -> new ResourceNotFoundException("Post não encontrado."));
+        
+        // Lock exclusivo na linha do usuário para serializar requisições concorrentes do mesmo usuário
+        jdbcTemplate.queryForObject("SELECT id FROM users WHERE id = ? FOR UPDATE", Long.class, userId);
         
         Long resolvedOptionId = resolveOptionId(req.getPostId(), req.getOptionId());
         req.setOptionId(resolvedOptionId);
@@ -108,7 +112,7 @@ public class InteractionService implements RegisterInteractionUseCase {
 
     private void recalculateBehaviorProfile(Long userId, OffsetDateTime now) {
         List<Interaction> allInteractions = interactionPort.getByUserId(userId);
-        Map<Long, BigDecimal> rawScores = new HashMap<>();
+        Map<Long, BigDecimal> rawScores = new TreeMap<>();
         BigDecimal step = new BigDecimal("0.1");
 
         for (Interaction inter : allInteractions) {
@@ -131,20 +135,34 @@ public class InteractionService implements RegisterInteractionUseCase {
             }
         }
 
-        // Remove atributos antigos que zeraram e atualiza os ativos (clamped 0..1)
-        jdbcTemplate.update("DELETE FROM behavior_profile_attributes WHERE user_id = ?", userId);
+        // Filtra e aplica clamp (0..1) em ordem crescente determinística
+        Map<Long, BigDecimal> finalScores = new TreeMap<>();
         for (Map.Entry<Long, BigDecimal> entry : rawScores.entrySet()) {
             BigDecimal score = entry.getValue();
             if (score.compareTo(BigDecimal.ONE) > 0) score = BigDecimal.ONE;
             if (score.compareTo(BigDecimal.ZERO) < 0) score = BigDecimal.ZERO;
 
             if (score.compareTo(BigDecimal.ZERO) > 0) {
-                BehaviorProfileAttribute bpa = new BehaviorProfileAttribute();
-                bpa.setUserId(userId);
-                bpa.setAttributeId(entry.getKey());
-                bpa.setScore(score);
-                bpa.setUpdatedAt(now);
-                behaviorPort.save(bpa);
+                finalScores.put(entry.getKey(), score);
+            }
+        }
+
+        if (finalScores.isEmpty()) {
+            jdbcTemplate.update("DELETE FROM behavior_profile_attributes WHERE user_id = ?", userId);
+        } else {
+            // Remove atributos que não estão mais ativos para este usuário
+            String inClause = finalScores.keySet().stream().map(String::valueOf).collect(Collectors.joining(","));
+            jdbcTemplate.update("DELETE FROM behavior_profile_attributes WHERE user_id = ? AND attribute_id NOT IN (" + inClause + ")", userId);
+
+            // Upsert atômico determinístico ordenado por attribute_id
+            for (Map.Entry<Long, BigDecimal> entry : finalScores.entrySet()) {
+                jdbcTemplate.update(
+                    "INSERT INTO behavior_profile_attributes (user_id, attribute_id, score, updated_at) " +
+                    "VALUES (?, ?, ?, ?) " +
+                    "ON CONFLICT (user_id, attribute_id) " +
+                    "DO UPDATE SET score = EXCLUDED.score, updated_at = EXCLUDED.updated_at",
+                    userId, entry.getKey(), entry.getValue(), now
+                );
             }
         }
     }

@@ -11,4 +11,15 @@ public class SecurityUtils {
         }
         throw new IllegalStateException("User is not authenticated");
     }
+
+    public static Long getOptionalAuthenticatedUserId() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof Long) {
+                return (Long) authentication.getPrincipal();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
 }

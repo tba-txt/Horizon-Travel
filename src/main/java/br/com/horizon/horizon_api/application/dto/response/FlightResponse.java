@@ -18,6 +18,8 @@ public class FlightResponse {
     private LocalDate flightDate;
     private LocalTime departureTime;
     private LocalTime arrivalTime;
+    @io.swagger.v3.oas.annotations.media.Schema(description = "Duração fixa do voo direto entre São Paulo (GRU) e o destino, em minutos.", example = "140")
+    private Integer durationMinutes;
     private String flightNumber;
     @io.swagger.v3.oas.annotations.media.Schema(description = "Tarifa básica por passageiro para este único trecho (ida ou volta).")
     private BigDecimal pricePerPerson;
@@ -27,4 +29,5 @@ public class FlightResponse {
     private BigDecimal pricePremium;
     private Integer totalSeats;
     private Integer availableSeats;
+    private String seatClass;
 }

@@ -35,7 +35,7 @@ class QuizServiceTest {
     @Test void shouldSubmitQuizAndCalculateExplicitProfile() {
         SubmitQuizRequest req = new SubmitQuizRequest();
         req.setUserId(1L);
-        Map<Long, Long> answers = new HashMap<>();
+        Map<Long, Object> answers = new HashMap<>();
         answers.put(10L, 100L);
         answers.put(11L, 101L);
         req.setAnswers(answers);
