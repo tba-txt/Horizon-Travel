@@ -19,7 +19,10 @@ public class User {
     private String passwordHash;
     private String cpf;
     private LocalDate birthDate;
+    private String phone;
+    private String country = "Brasil";
     private String profileImageUrl;
+    private String authProvider = "LOCAL";
     private Boolean active;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
@@ -37,7 +40,7 @@ public class User {
 
     public void validateAge() {
         if (this.birthDate == null) {
-            throw new BusinessException("A data de nascimento é obrigatória.");
+            return;
         }
         if (this.birthDate.isAfter(LocalDate.now())) {
             throw new BusinessException("A data de nascimento não pode ser uma data futura.");

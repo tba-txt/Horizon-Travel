@@ -19,6 +19,7 @@ public class SecurityConfig {
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
 	@Bean
+	@SuppressWarnings({"java:S4502", "squid:S4502"}) // API REST Stateless protegida via Bearer JWT - desativação intencional de CSRF
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
 			.cors(cors -> cors.configurationSource(corsConfigurationSource()))

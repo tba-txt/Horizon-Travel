@@ -26,17 +26,26 @@ public class UserEntity {
     @Column(name = "email", nullable = false, length = 150, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false, length = 255)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
-    @Column(name = "cpf", nullable = false, length = 11, unique = true)
+    @Column(name = "cpf", length = 11, unique = true)
     private String cpf;
 
-    @Column(name = "birth_date", nullable = false)
+    @Column(name = "birth_date")
     private LocalDate birthDate;
+
+    @Column(name = "phone", length = 30)
+    private String phone;
+
+    @Column(name = "country", length = 100)
+    private String country = "Brasil";
 
     @Column(name = "profile_image_url", columnDefinition = "TEXT")
     private String profileImageUrl;
+
+    @Column(name = "auth_provider", length = 50)
+    private String authProvider = "LOCAL";
 
     @Column(name = "active", nullable = false)
     private Boolean active = true;

@@ -15,6 +15,6 @@ public class PassengerRequest {
     
     @NotNull(message = "Passenger age is required")
     @Min(value = 1, message = "Age must be at least 1")
-    @Max(value = 99, message = "Age must be at most 99")
+    @Max(value = 120, message = "Age must be at most 120")
     private Integer age;
 }

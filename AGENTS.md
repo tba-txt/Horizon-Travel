@@ -1,10 +1,17 @@
 # Horizon API - AI Agents Documentation
 
+> [!CAUTION]
+> ## REGRA ABSOLUTA E INEGOCIÁVEL (NUNCA VIOLE)
+> **NUNCA EXECUTAR NENHUM COMANDO DE COMPILAÇÃO, BUILD OU TESTE (NEM MVN, NG BUILD, NPM RUN BUILD, NG TEST, NPM TEST, OU QUALQUER OUTRO). NUNCA!**
+> - **O agente deve estritamente APENAS alterar/escrever o código.**
+> - **ZERO compilações, ZERO testes, ZERO builds.**
+> - O usuário cuida da execução, build e testes no terminal dele.
+
 ## Overview
 This document describes the AI agents and their roles in the Horizon API project.
 
 **REGRAS ESTRITAS (OBRIGATÓRIO):**
-- NUNCA executar comandos `mvn`, `npm run build`, `ng build` ou qualquer comando de build/teste em nada que o usuário mandar.
+- **NUNCA executar comandos mvn, npm run build, ng build ou qualquer comando de build/teste em nada que o usuário mandar. NENHUM teste e NENHUM comando mvn deve ser executado.**
 - Se não encontrar um arquivo na primeira tentativa direta, avise imediatamente o usuário sem gastar tokens procurando indefinidamente.
 - **CORES PADRÃO HORIZON (ESTRITO):**
   - Azul padrão Horizon: `#5BA4D8`

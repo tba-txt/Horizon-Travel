@@ -60,6 +60,30 @@ class RateLimitingFilterTest {
     }
 
     @Test
+    void shouldBlockWhenExceedingRateLimitOnGenericEndpoint() throws ServletException, IOException {
+        String clientIp = "192.168.1.50";
+
+        // Generic endpoint limit is 100 requests per minute
+        for (int i = 0; i < 100; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("GET", "/destinations");
+            req.setRemoteAddr(clientIp);
+            MockHttpServletResponse res = new MockHttpServletResponse();
+            filter.doFilter(req, res, filterChain);
+            assertEquals(200, res.getStatus());
+        }
+
+        // 101st request should be rejected with 429
+        MockHttpServletRequest excessReq = new MockHttpServletRequest("GET", "/destinations");
+        excessReq.setRemoteAddr(clientIp);
+        MockHttpServletResponse excessRes = new MockHttpServletResponse();
+
+        filter.doFilter(excessReq, excessRes, filterChain);
+
+        assertEquals(429, excessRes.getStatus());
+        assertEquals("60", excessRes.getHeader("Retry-After"));
+    }
+
+    @Test
     void shouldBypassOptionsAndSwagger() throws ServletException, IOException {
         MockHttpServletRequest optionsReq = new MockHttpServletRequest("OPTIONS", "/auth/login");
         MockHttpServletResponse optionsRes = new MockHttpServletResponse();

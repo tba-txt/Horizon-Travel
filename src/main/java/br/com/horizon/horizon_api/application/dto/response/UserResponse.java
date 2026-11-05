@@ -14,7 +14,10 @@ public class UserResponse {
     private String email;
     private String cpf;
     private LocalDate birthDate;
+    private String phone;
+    private String country;
     private String profileImageUrl;
+    private String authProvider;
     private java.math.BigDecimal budgetPerPerson;
     private Boolean active;
     private OffsetDateTime createdAt;

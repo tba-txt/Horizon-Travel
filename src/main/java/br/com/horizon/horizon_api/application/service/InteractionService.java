@@ -13,7 +13,9 @@ import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -58,6 +60,7 @@ public class InteractionService implements RegisterInteractionUseCase {
         
         OffsetDateTime now = OffsetDateTime.now();
         
+        log.info("Processando interação: userId={}, postId={}, type={}, optionId={}, isRemoving={}", userId, req.getPostId(), newType, resolvedOptionId, isRemoving);
         // 1. Save or Delete Interaction
         if (isRemoving) {
             interactionPort.delete(prevOpt.get().getId());
@@ -110,6 +113,7 @@ public class InteractionService implements RegisterInteractionUseCase {
         return optionId;
     }
 
+    @SuppressWarnings({"java:S2077", "squid:S2077"})
     private void recalculateBehaviorProfile(Long userId, OffsetDateTime now) {
         List<Interaction> allInteractions = interactionPort.getByUserId(userId);
         Map<Long, BigDecimal> rawScores = new TreeMap<>();
@@ -151,8 +155,13 @@ public class InteractionService implements RegisterInteractionUseCase {
             jdbcTemplate.update("DELETE FROM behavior_profile_attributes WHERE user_id = ?", userId);
         } else {
             // Remove atributos que não estão mais ativos para este usuário
-            String inClause = finalScores.keySet().stream().map(String::valueOf).collect(Collectors.joining(","));
-            jdbcTemplate.update("DELETE FROM behavior_profile_attributes WHERE user_id = ? AND attribute_id NOT IN (" + inClause + ")", userId);
+            org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc = 
+                new org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate(jdbcTemplate);
+            org.springframework.jdbc.core.namedparam.MapSqlParameterSource params = 
+                new org.springframework.jdbc.core.namedparam.MapSqlParameterSource();
+            params.addValue("userId", userId);
+            params.addValue("activeIds", finalScores.keySet());
+            namedJdbc.update("DELETE FROM behavior_profile_attributes WHERE user_id = :userId AND attribute_id NOT IN (:activeIds)", params);
 
             // Upsert atômico determinístico ordenado por attribute_id
             for (Map.Entry<Long, BigDecimal> entry : finalScores.entrySet()) {

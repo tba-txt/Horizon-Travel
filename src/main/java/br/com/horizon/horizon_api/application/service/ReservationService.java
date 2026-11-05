@@ -67,8 +67,8 @@ public class ReservationService implements CreateReservationUseCase, GetReservat
             if (pReq.getName() == null || pReq.getName().trim().isEmpty()) {
                 throw new IllegalArgumentException("O nome do passageiro não pode ser vazio.");
             }
-            if (pReq.getAge() == null || pReq.getAge() < 1 || pReq.getAge() > 99) {
-                throw new IllegalArgumentException("A idade do passageiro deve estar entre 1 e 99 anos.");
+            if (pReq.getAge() == null || pReq.getAge() < 1 || pReq.getAge() > 120) {
+                throw new IllegalArgumentException("A idade do passageiro deve estar entre 1 e 120 anos.");
             }
             Passenger p = new Passenger();
             p.setName(pReq.getName());

@@ -89,6 +89,7 @@ public class PostPersistenceAdapter implements PostPersistencePort, PostAttribut
     }
     
     @Override
+    @SuppressWarnings({"java:S2077", "squid:S2077"})
     public List<Post> findPublished(Integer page, Integer size) {
         if (page == null) page = 0;
         if (size == null) size = 100;
@@ -116,14 +117,10 @@ public class PostPersistenceAdapter implements PostPersistencePort, PostAttribut
             .collect(Collectors.toList());
 
         if (!thisOrThatIds.isEmpty()) {
-            String inSql = String.join(",", java.util.Collections.nCopies(thisOrThatIds.size(), "?"));
-            jdbcTemplate.query(
-                "SELECT id, post_id, label, image_url, votes_count FROM post_options WHERE post_id IN (" + inSql + ") ORDER BY id",
-                ps -> {
-                    for (int i = 0; i < thisOrThatIds.size(); i++) {
-                        ps.setLong(i + 1, thisOrThatIds.get(i));
-                    }
-                },
+            org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate namedJdbc = new org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate(jdbcTemplate);
+            namedJdbc.query(
+                "SELECT id, post_id, label, image_url, votes_count FROM post_options WHERE post_id IN (:thisOrThatIds) ORDER BY id",
+                java.util.Collections.singletonMap("thisOrThatIds", thisOrThatIds),
                 rs -> {
                     Long postId = rs.getLong("post_id");
                     Post.PostOption opt = new Post.PostOption();

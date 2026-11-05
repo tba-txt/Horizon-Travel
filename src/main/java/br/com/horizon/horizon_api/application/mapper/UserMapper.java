@@ -19,7 +19,10 @@ public class UserMapper {
         domain.setCpf(entity.getCpf());
         domain.setPasswordHash(entity.getPasswordHash());
         domain.setBirthDate(entity.getBirthDate());
+        domain.setPhone(entity.getPhone());
+        domain.setCountry(entity.getCountry() != null ? entity.getCountry() : "Brasil");
         domain.setProfileImageUrl(entity.getProfileImageUrl());
+        domain.setAuthProvider(entity.getAuthProvider());
         domain.setActive(entity.getActive());
         domain.setCreatedAt(entity.getCreatedAt());
         domain.setUpdatedAt(entity.getUpdatedAt());
@@ -36,7 +39,10 @@ public class UserMapper {
         entity.setCpf(domain.getCpf());
         entity.setPasswordHash(domain.getPasswordHash());
         entity.setBirthDate(domain.getBirthDate());
+        entity.setPhone(domain.getPhone());
+        entity.setCountry(domain.getCountry() != null ? domain.getCountry() : "Brasil");
         entity.setProfileImageUrl(domain.getProfileImageUrl());
+        entity.setAuthProvider(domain.getAuthProvider());
         entity.setActive(domain.getActive());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
@@ -51,8 +57,10 @@ public class UserMapper {
         domain.setEmail(request.getEmail());
         domain.setCpf(request.getCpf());
         domain.setBirthDate(request.getBirthDate());
+        domain.setPhone(request.getPhone());
+        domain.setCountry(request.getCountry());
         domain.setProfileImageUrl(request.getProfileImageUrl());
-        // password hash is handled in service
+        // password hash and authProvider are handled in service
         return domain;
     }
     
@@ -65,7 +73,10 @@ public class UserMapper {
         response.setEmail(domain.getEmail());
         response.setCpf(domain.getCpf());
         response.setBirthDate(domain.getBirthDate());
+        response.setPhone(domain.getPhone());
+        response.setCountry(domain.getCountry() != null ? domain.getCountry() : "Brasil");
         response.setProfileImageUrl(domain.getProfileImageUrl());
+        response.setAuthProvider(domain.getAuthProvider());
         response.setActive(domain.getActive());
         response.setCreatedAt(domain.getCreatedAt());
         response.setUpdatedAt(domain.getUpdatedAt());

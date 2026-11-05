@@ -1,10 +1,12 @@
 package br.com.horizon.horizon_api.interfaces.rest;
 
 import br.com.horizon.horizon_api.application.dto.request.ForgotPasswordRequest;
+import br.com.horizon.horizon_api.application.dto.request.GoogleLoginRequest;
 import br.com.horizon.horizon_api.application.dto.request.LoginRequest;
 import br.com.horizon.horizon_api.application.dto.request.ResetPasswordRequest;
 import br.com.horizon.horizon_api.application.dto.response.LoginResponse;
 import br.com.horizon.horizon_api.application.usecase.ForgotPasswordUseCase;
+import br.com.horizon.horizon_api.application.usecase.GoogleLoginUseCase;
 import br.com.horizon.horizon_api.application.usecase.LoginUseCase;
 import br.com.horizon.horizon_api.application.usecase.ResetPasswordUseCase;
 import jakarta.validation.Valid;
@@ -29,6 +31,7 @@ import org.springframework.http.HttpStatus;
 public class AuthController {
 
     private final LoginUseCase loginUseCase;
+    private final GoogleLoginUseCase googleLoginUseCase;
     private final ForgotPasswordUseCase forgotPasswordUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
     private final CreateUserUseCase createUserUseCase;
@@ -37,6 +40,12 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(loginUseCase.execute(request));
+    }
+
+    @Operation(summary = "Login / Cadastro com Google", description = "Autentica ou cadastra o usuário através de um token do Google OAuth2.")
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(googleLoginUseCase.execute(request));
     }
 
     @Operation(summary = "Cadastrar nova conta (atalho via /auth/register)", description = "Permite o cadastro de uma nova conta diretamente pela rota de autenticação.")

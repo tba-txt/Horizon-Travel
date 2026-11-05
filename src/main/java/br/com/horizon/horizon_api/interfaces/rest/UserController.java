@@ -1,6 +1,7 @@
 package br.com.horizon.horizon_api.interfaces.rest;
 
 import br.com.horizon.horizon_api.application.dto.request.UserRequest;
+import br.com.horizon.horizon_api.application.dto.request.ChangePasswordRequest;
 import br.com.horizon.horizon_api.application.dto.response.UserResponse;
 import br.com.horizon.horizon_api.application.usecase.*;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ public class UserController {
     private final UpdateUserUseCase updateUserUseCase;
     private final DeactivateUserUseCase deactivateUserUseCase;
     private final UploadProfilePictureUseCase uploadProfilePictureUseCase;
+    private final ChangePasswordUseCase changePasswordUseCase;
 
     @Operation(summary = "Cadastrar nova conta / Registrar usuário", description = "Cria uma nova conta de usuário no sistema com perfil ativo.")
     @PostMapping
@@ -57,5 +59,13 @@ public class UserController {
     public ResponseEntity<UserResponse> uploadProfilePicture(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
         Long id = SecurityUtils.getAuthenticatedUserId();
         return ResponseEntity.ok(uploadProfilePictureUseCase.execute(id, file));
+    }
+
+    @Operation(summary = "Alterar minha senha", description = "Permite ao usuário autenticado alterar sua senha fornecendo a senha atual e a nova senha.")
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        Long id = SecurityUtils.getAuthenticatedUserId();
+        changePasswordUseCase.execute(id, request);
+        return ResponseEntity.noContent().build();
     }
 }

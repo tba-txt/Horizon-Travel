@@ -57,6 +57,7 @@ class UserServiceTest {
         request.setEmail("john@test.com");
         request.setCpf("12345678901");
         request.setPassword("password123");
+        request.setBirthDate(java.time.LocalDate.of(1995, 5, 20));
 
         when(userPort.existsByEmail(any())).thenReturn(false);
         when(userPort.existsByCpf(any())).thenReturn(false);
@@ -86,6 +87,7 @@ class UserServiceTest {
         UserRequest request = new UserRequest();
         request.setEmail("john@test.com");
         request.setPassword("password123");
+        request.setBirthDate(java.time.LocalDate.of(1995, 5, 20));
 
         when(userPort.existsByEmail("john@test.com")).thenReturn(true);
 
@@ -99,6 +101,7 @@ class UserServiceTest {
         request.setEmail("john@test.com");
         request.setCpf("12345678901");
         request.setPassword("password123");
+        request.setBirthDate(java.time.LocalDate.of(1995, 5, 20));
 
         when(userPort.existsByEmail("john@test.com")).thenReturn(false);
         when(userPort.existsByCpf("12345678901")).thenReturn(true);

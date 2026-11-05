@@ -6,6 +6,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,6 +26,7 @@ class ReservationRequestValidationTest {
     }
 
     @Test
+    @DisplayName("Deve falhar quando passageiro tiver idade negativa ou nome em branco")
     void shouldFailWhenPassengerHasInvalidAgeOrBlankName() {
         ReservationRequest request = new ReservationRequest();
         request.setDestinationId(1L);
@@ -48,6 +50,45 @@ class ReservationRequestValidationTest {
     }
 
     @Test
+    @DisplayName("Deve falhar quando passageiro tiver idade superior a 120 anos")
+    void shouldFailWhenPassengerHasAgeAbove120() {
+        ReservationRequest request = new ReservationRequest();
+        request.setDestinationId(1L);
+        request.setTripType(TripType.ONE_WAY);
+        request.setOutboundFlightId(10L);
+
+        PassengerRequest invalidPassenger = new PassengerRequest();
+        invalidPassenger.setName("Idoso Centenário");
+        invalidPassenger.setAge(121); // Excede o limite máximo de 120 anos
+
+        request.setPassengers(List.of(invalidPassenger));
+
+        Set<ConstraintViolation<ReservationRequest>> violations = validator.validate(request);
+        assertFalse(violations.isEmpty(), "Deveria acusar violação de idade máxima");
+        boolean hasAgeViolation = violations.stream().anyMatch(v -> v.getPropertyPath().toString().contains("passengers[0].age"));
+        assertTrue(hasAgeViolation, "Deveria violar @Max(120)");
+    }
+
+    @Test
+    @DisplayName("Deve passar quando passageiro tiver idade exatamente 120 anos")
+    void shouldPassWhenPassengerHasAgeExactly120() {
+        ReservationRequest request = new ReservationRequest();
+        request.setDestinationId(1L);
+        request.setTripType(TripType.ONE_WAY);
+        request.setOutboundFlightId(10L);
+
+        PassengerRequest validPassenger = new PassengerRequest();
+        validPassenger.setName("Idoso 120 Anos");
+        validPassenger.setAge(120);
+
+        request.setPassengers(List.of(validPassenger));
+
+        Set<ConstraintViolation<ReservationRequest>> violations = validator.validate(request);
+        assertTrue(violations.isEmpty(), "Idade 120 anos é válida e deve passar");
+    }
+
+    @Test
+    @DisplayName("Deve passar quando todos os dados da reserva forem válidos")
     void shouldPassWhenAllDataIsValid() {
         ReservationRequest request = new ReservationRequest();
         request.setDestinationId(1L);

@@ -50,4 +50,5 @@ RunSql.class
 *.txt
 script.js
 test.json
+executar-sonar.bat
 =

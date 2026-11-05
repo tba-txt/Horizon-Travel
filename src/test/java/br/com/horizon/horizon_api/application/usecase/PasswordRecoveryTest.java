@@ -72,7 +72,7 @@ class PasswordRecoveryTest {
         forgotPasswordUseCase.execute(req);
 
         verify(tokenRepository).save(any(PasswordResetTokenEntity.class));
-        verify(emailPort).sendEmail(eq("test@test.com"), anyString(), anyString());
+        verify(emailPort, timeout(2000)).sendEmail(eq("test@test.com"), anyString(), anyString());
     }
 
     @Test

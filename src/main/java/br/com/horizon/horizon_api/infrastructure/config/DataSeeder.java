@@ -191,6 +191,15 @@ public class DataSeeder implements CommandLineRunner {
         } catch (Exception e) {
             log.debug("Colunas de anexos já ajustadas em support_tickets: {}", e.getMessage());
         }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN cpf DROP NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN birth_date DROP NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(50) DEFAULT 'LOCAL'");
+        } catch (Exception e) {
+            log.warn("Aviso ao sincronizar colunas para login social em users: {}", e.getMessage());
+        }
     }
 
     private void updateQuizResponsesConstraints() {
@@ -583,9 +592,6 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedPosts() {
-        if (postRepository.count() >= 30) {
-            return;
-        }
         // 1. Planejamento de Viagem Sozinho
         upsertPost(
             "A arte de viajar sozinho: Desbravando o mundo na sua própria companhia",
@@ -644,13 +650,6 @@ public class DataSeeder implements CommandLineRunner {
             "Onde você recarregaria suas energias no próximo feriado prolongado?",
             new OptionSeed("Mergulho nas Águas de Noronha", "assets/feed/id02-eco.webp", Map.of("ECOTURISMO", 1.0, "PRAIA", 1.0, "MERGULHO", 1.0, "CALOR", 1.0, "RELAXAMENTO", 0.8)),
             new OptionSeed("Chalé com Lareira na Serra Gaúcha", "assets/feed/id02-city.webp", Map.of("FRIO", 1.0, "ROMANTICO", 1.0, "RELAXAMENTO", 1.0, "GASTRONOMIA", 0.9))
-        );
-
-        upsertThisOrThatPost(
-            "Isso ou Aquilo: Adrenalina e Ritmo",
-            "Você prefere a imensidão das dunas e lagoas ou a energia vibrante de uma metrópole?",
-            new OptionSeed("Expedição pelos Lençóis Maranhenses", "assets/feed/id03-eco.webp", Map.of("ECOTURISMO", 1.0, "NATUREZA", 1.0, "AVENTURA", 1.0, "CALOR", 0.8)),
-            new OptionSeed("Fim de Semana em Nova York", "assets/feed/id03-city.webp", Map.of("URBANO", 1.0, "VIDA_NOTURNA", 1.0, "CULTURA", 0.9))
         );
 
         upsertThisOrThatPost(
@@ -896,13 +895,10 @@ public class DataSeeder implements CommandLineRunner {
             "Isso ou Aquilo: Frio Extremo ou Calor Litorâneo",
             "Isso ou Aquilo: Natureza Pura ou Grandes Espetáculos"
         );
-        for (PostEntity p : postRepository.findAll()) {
-            if (!validTitles.contains(p.getTitle()) && (p.getId() == null || p.getId() < 101 || p.getId() > 125)) {
-                p.setPublished(false);
-                postRepository.save(p);
-            }
-        }
         try {
+            jdbcTemplate.update("UPDATE posts SET published = false WHERE id < 101 AND (post_type IS NULL OR post_type != 'THIS_OR_THAT')");
+            jdbcTemplate.update("UPDATE posts SET published = true WHERE id BETWEEN 101 AND 125");
+            jdbcTemplate.update("UPDATE posts SET published = true WHERE post_type = 'THIS_OR_THAT'");
             jdbcTemplate.update("""
                 UPDATE posts p SET
                     likes_count = (SELECT count(*) FROM interactions i WHERE i.post_id = p.id AND i.interaction_type = 'LIKE'),
