@@ -51,6 +51,6 @@ public class AuthService implements LoginUseCase {
         loginAttemptPort.loginSucceeded(attemptKey);
         String token = tokenPort.generateToken(user);
         log.info("User ID: {} logged in successfully", user.getId());
-        return new LoginResponse(token);
+        return new LoginResponse(token, user.getName(), user.getSocialName());
     }
 }

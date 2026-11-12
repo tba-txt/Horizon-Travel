@@ -21,11 +21,19 @@ public class JwtTokenAdapter implements TokenPort {
     public String generateToken(User user) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
-            return JWT.create()
+            var builder = JWT.create()
                     .withIssuer("horizon-api")
                     .withSubject(user.getId().toString())
-                    .withExpiresAt(Instant.now().plus(2, ChronoUnit.HOURS))
-                    .sign(algorithm);
+                    .withExpiresAt(Instant.now().plus(2, ChronoUnit.HOURS));
+
+            if (user.getName() != null) {
+                builder.withClaim("name", user.getName());
+            }
+            if (user.getSocialName() != null) {
+                builder.withClaim("socialName", user.getSocialName());
+            }
+
+            return builder.sign(algorithm);
         } catch (Exception exception) {
             throw new RuntimeException("Error while generating token", exception);
         }

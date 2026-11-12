@@ -82,7 +82,7 @@ public class GoogleAuthService implements GoogleLoginUseCase {
         }
 
         String token = tokenPort.generateToken(user);
-        return new LoginResponse(token);
+        return new LoginResponse(token, user.getName(), user.getSocialName());
     }
 
     private GoogleUserInfo verifyToken(String idToken) {
